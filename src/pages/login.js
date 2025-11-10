@@ -153,7 +153,7 @@ export default function LoginScreen() {
                   />
                   <Text style={styles.rememberText}>Remember me</Text>
                   <Pressable
-                    onPress={() => navigation.navigate("ForgotPassword")}
+                    onPress={() => navigation.navigate("Forget")}
                   >
                     <Text style={styles.forgotText}>Forgot password?</Text>
                   </Pressable>

@@ -14,6 +14,7 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -25,6 +26,8 @@ import { useUserStore } from "../utils/store/userStore";
 import {jwtDecode} from "jwt-decode";
 import { saveTokens } from "../utils/tokenStorage";
 
+const { width } = Dimensions.get("window");
+
 const SignupSchema = Yup.object().shape({
   name: Yup.string().required("Name is required"),
   email: Yup.string().email("Invalid email").required("Email is required"),
@@ -35,46 +38,69 @@ const SignupSchema = Yup.object().shape({
   confirmPassword: Yup.string()
     .oneOf([Yup.ref("password")], "Passwords must match")
     .required("Confirm Password is required"),
-
 });
 
-const { width } = Dimensions.get("window");
+const LoadingOverlay = ({ visible }) => (
+  <Modal transparent animationType="fade" visible={visible}>
+    <View style={styles.overlay}>
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#92400e" />
+        <Text style={{ marginTop: 10, color: "#92400e", fontWeight: "600" }}>Registering...</Text>
+      </View>
+    </View>
+  </Modal>
+);
 
 export default function RegistrationScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { setUser } = useUserStore();
-  const { mutate, isLoading } = useRegister();
+  const { mutate } = useRegister();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const initialValues = { name: "", email: "", phone: "", password: "", confirmPassword: "" };
+  const initialValues = {
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  };
 
   const handleRegister = (values, { resetForm }) => {
     const { name, email, phone, password } = values;
+
+    setLoading(true);
 
     mutate(
       { name, email, phone, password },
       {
         onSuccess: async (resData) => {
-          const accessToken = resData.accessToken;
-          const refreshToken = resData.refreshToken;
-          await saveTokens(accessToken, refreshToken);
-          const user = jwtDecode(accessToken);
-          setUser(user);
+          try {
+            const { accessToken, refreshToken } = resData;
+            await saveTokens(accessToken, refreshToken);
+            const user = jwtDecode(accessToken);
+            setUser(user);
 
-          resetForm();
-          Alert.alert("Success", `Welcome ${user.name}!`);
-          navigation.navigate("Home");
+            resetForm();
+            Alert.alert("Success", `Welcome ${user.name || "User"}!`);
+           navigation.getParent()?.replace("App");
+          } catch (err) {
+            console.error("Registration post-processing error:", err);
+            Alert.alert("Error", "Something went wrong after registration.");
+          } finally {
+            setLoading(false);
+          }
         },
         onError: (error) => {
-          const msg = error.response?.data?.error || error.message || "Registration failed";
+          const msg = error?.response?.data?.error || error.message || "Registration failed";
           Alert.alert("Error", msg);
+          setLoading(false);
         },
       }
     );
   };
 
-  // Loading button component
   const LoadingButton = ({ onPress, loading, title }) => (
     <Pressable
       onPress={onPress}
@@ -85,7 +111,11 @@ export default function RegistrationScreen() {
       ]}
       disabled={loading}
     >
-      {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>{title}</Text>}
+      {loading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text style={styles.buttonText}>{title}</Text>
+      )}
     </Pressable>
   );
 
@@ -98,7 +128,6 @@ export default function RegistrationScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-
           <Text style={styles.header}>Create Your Account</Text>
 
           <Formik
@@ -108,9 +137,11 @@ export default function RegistrationScreen() {
           >
             {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
               <View style={styles.form}>
-                {[{ field: "name", placeholder: "Full Name", icon: "user" },
+                {[
+                  { field: "name", placeholder: "Full Name", icon: "user" },
                   { field: "email", placeholder: "Email Address", icon: "envelope" },
-                  { field: "phone", placeholder: "Phone Number", icon: "phone" }].map(({ field, placeholder, icon, keyboardType = "default" }) => (
+                  { field: "phone", placeholder: "Phone Number", icon: "phone" },
+                ].map(({ field, placeholder, icon }) => (
                   <View key={field} style={styles.fieldContainer}>
                     <View style={styles.inputWrapper}>
                       <Icon name={icon} size={16} color="#999" style={{ marginRight: 10 }} />
@@ -120,17 +151,21 @@ export default function RegistrationScreen() {
                         onChangeText={handleChange(field)}
                         onBlur={handleBlur(field)}
                         value={values[field]}
-                        keyboardType={keyboardType}
+                        keyboardType={field === "phone" ? "phone-pad" : "default"}
                         style={styles.input}
                         autoCapitalize="none"
                       />
                     </View>
-                    {errors[field] && touched[field] && <Text style={styles.error}>{errors[field]}</Text>}
+                    {errors[field] && touched[field] && (
+                      <Text style={styles.error}>{errors[field]}</Text>
+                    )}
                   </View>
                 ))}
 
-                {[{ field: "password", placeholder: "Password" },
-                  { field: "confirmPassword", placeholder: "Confirm Password" }].map(({ field, placeholder }) => (
+                {[
+                  { field: "password", placeholder: "Password" },
+                  { field: "confirmPassword", placeholder: "Confirm Password" },
+                ].map(({ field, placeholder }) => (
                   <View key={field} style={styles.fieldContainer}>
                     <View style={styles.inputWrapper}>
                       <Icon name="lock" size={16} color="#999" style={{ marginRight: 10 }} />
@@ -148,29 +183,44 @@ export default function RegistrationScreen() {
                         onPress={() => setShowPassword(!showPassword)}
                         style={{ paddingHorizontal: 5 }}
                       >
-                        <Icon name={showPassword ? "eye-slash" : "eye"} size={16} color="#999" />
+                        <Icon
+                          name={showPassword ? "eye-slash" : "eye"}
+                          size={16}
+                          color="#999"
+                        />
                       </TouchableOpacity>
                     </View>
-                    {errors[field] && touched[field] && <Text style={styles.error}>{errors[field]}</Text>}
+                    {errors[field] && touched[field] && (
+                      <Text style={styles.error}>{errors[field]}</Text>
+                    )}
                   </View>
                 ))}
 
-                {/* Loading Button */}
-                <LoadingButton onPress={handleSubmit} loading={isLoading} title="Register Now" />
+                <LoadingButton
+                  onPress={handleSubmit}
+                  loading={loading}
+                  title="Register Now"
+                />
               </View>
             )}
           </Formik>
 
           <Pressable
             onPress={() => navigation.navigate("Login")}
-            style={({ pressed }) => [styles.loginContainer, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              styles.loginContainer,
+              pressed && { opacity: 0.6 },
+            ]}
           >
             <Text style={styles.loginText}>
-              Already registered? <Text style={styles.loginLink}>Login now</Text>
+              Already registered?{" "}
+              <Text style={styles.loginLink}>Login now</Text>
             </Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      <LoadingOverlay visible={loading} />
     </SafeAreaView>
   );
 }
@@ -180,7 +230,13 @@ const styles = StyleSheet.create({
   scrollView: { flexGrow: 1, justifyContent: "center" },
   container: { paddingHorizontal: 24, backgroundColor: "#f7f8fa" },
   logo: { width: 200, height: 150, alignSelf: "center" },
-  header: { fontSize: 26, fontWeight: "700", marginBottom: 24, textAlign: "center", color: "#333" },
+  header: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 24,
+    textAlign: "center",
+    color: "#333",
+  },
   form: { width: "100%" },
   fieldContainer: { marginBottom: 16 },
   inputWrapper: {
@@ -190,11 +246,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 10,
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.08,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+      },
       android: { elevation: 2 },
     }),
   },
-  input: { flex: 1, paddingVertical: 14, fontSize: width < 360 ? 14 : 16, color: "#333" },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: width < 360 ? 14 : 16,
+    color: "#333",
+  },
   error: { color: "#d9534f", marginTop: 4, fontSize: 12 },
   button: {
     backgroundColor: "#92400e",
@@ -213,4 +279,20 @@ const styles = StyleSheet.create({
   loginContainer: { marginTop: 20 },
   loginText: { textAlign: "center", color: "#6c757d", fontSize: 14 },
   loginLink: { color: "#92400e", fontWeight: "600" },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loaderContainer: {
+    backgroundColor: "#fff",
+    padding: 30,
+    borderRadius: 10,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    alignItems: "center",
+  },
 });

@@ -88,7 +88,7 @@ const { mutate: logout } = useLogout({
             icon="map-marker-alt"
             label="My Address"
             theme={theme}
-            onPress={() => navigation.navigate("MapTilerPicker")}
+            onPress={() => navigation.navigate("Address")}
           />
           <MenuItem
             icon="first-order"
@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   avatar: {
-    width: 90,
-    height: 90,
+    width: 70,
+    height: 70,
     borderRadius: 45,
     justifyContent: "center",
     alignItems: "center",
@@ -284,6 +284,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginHorizontal: 20,
     marginTop: 35,
+    marginBottom: 30,
     padding: 15,
     borderRadius: 12,
     justifyContent: "center",

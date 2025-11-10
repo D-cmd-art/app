@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { useCartStore } from "../utils/store/cartStore";
-
+import Toast from "react-native-toast-message";
 const { width } = Dimensions.get("window");
 
 const Addtocart = () => {
@@ -21,7 +21,7 @@ const Addtocart = () => {
 
   // Calculate total and discount
   const Subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = Subtotal * 0.1; // 10% discount
+  const discount = Subtotal * 0.02; // 10% discount
   const total = Subtotal - discount;
 
   const renderItem = ({ item }) => (

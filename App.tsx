@@ -4,38 +4,41 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SafeAreaProvider } from 'react-native-safe-area-context'; // <-- ADDED THIS IMPORT
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { CartProvider } from './src/pages/CartContext.js';
 import { FavoritesProvider } from './src/pages/FavoritesContext.js';
 import { useUserStore } from './src/utils/store/userStore.js';
 import { getTokens } from './src/utils/tokenStorage.js';
-import { jwtDecode } from 'jwt-decode';
+import {jwtDecode} from 'jwt-decode';
 
 // Screens
 import Welcome from './src/pages/welcomescreen.js';
 import Login from './src/pages/login.js';
 import Register from './src/pages/register.js';
+import Forget from './src/pages/Forget.js';
 import Tabs from './src/navigation.js';
-import ResturantFood from './src/pages/Home/Resturantfood.js';
+import SplashScreen from './src/pages/SplashScreen.js';
+import Notification from './src/pages/Home/Notifications.js';
 import Subcategory from './src/pages/Home/Subcategories.js';
+import Location from './src/pages/Home/location.js';
 import AllFood from './src/pages/Home/Allfood.js';
 import HelpAndSupport from './src/pages/setting/Helpandsupports.js';
 import Wallets from './src/pages/setting/Wallets.js';
-import MapPicker from './src/pages/setting/MapTilerPicker.js';
-import ReferandEarn from './src/pages/setting/ReferEarn.js';
-import Order from './src/pages/setting/order.js';
-import ProfileDetails from './src/pages/setting/ProfileDetails.js';
-import Addtocart from './src/pages/addtocart.js';
-import ConfirmOrder from './src/pages/confirmorder.js';
-import TermsAndConditions from './src/pages/setting/Terms.js';
-import Cashback from './src/pages/setting/Cashback.js';
-import PrivatePolicy from './src/pages/setting/Privacy.js';
-import Aboutus from './src/pages/setting/Aboutus.js';
+import Address from './src/pages/setting/Address.js';
 import Favourites from './src/pages/favourite.js';
 import Search from './src/pages/Home/Search.js';
-import SplashScreen from './src/pages/SplashScreen.js';
-import Notification from './src/pages/Home/Notifications.js';
-import Location from './src/pages/Home/location.js';
+import Order from './src/pages/setting/order.js';
+import ProfileDetails from './src/pages/setting/ProfileDetails.js';
+import ResturantFood from './src/pages/Home/Resturantfood.js';
+import ConfirmOrder from './src/pages/confirmorder.js';
+import MapPicker from './src/pages/setting/MapTilerPicker.js';
+import ReferandEarn from './src/pages/setting/ReferEarn.js';
+import Aboutus from './src/pages/setting/Aboutus.js';
+import Cashback from './src/pages/setting/Cashback.js';
+import PrivatePolicy from './src/pages/setting/Privacy.js';
+import TermsAndConditions from './src/pages/setting/Terms.js';
+import Addtocart from './src/pages/addtocart.js';
 
 // Setup
 const queryClient = new QueryClient();
@@ -43,18 +46,19 @@ const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
 
-// Auth Navigator
+// -------------------- AUTH NAVIGATOR --------------------
 function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Welcome" component={Welcome} />
       <AuthStack.Screen name="Login" component={Login} />
       <AuthStack.Screen name="Register" component={Register} />
+      <AuthStack.Screen name="Forget" component={Forget} />
     </AuthStack.Navigator>
   );
 }
 
-// App Navigator
+// -------------------- APP NAVIGATOR --------------------
 function AppNavigator() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
@@ -64,6 +68,7 @@ function AppNavigator() {
       <AppStack.Screen name="Location" component={Location} />
       <AppStack.Screen name="AllFood" component={AllFood} />
       <AppStack.Screen name="HelpAndSupport" component={HelpAndSupport} />
+      <AppStack.Screen name="Address" component={Address} />
       <AppStack.Screen name="Favourites" component={Favourites} />
       <AppStack.Screen name="Search" component={Search} />
       <AppStack.Screen name="Order" component={Order} />
@@ -78,11 +83,11 @@ function AppNavigator() {
       <AppStack.Screen name="PrivacyPolicy" component={PrivatePolicy} />
       <AppStack.Screen name="TermsAndConditions" component={TermsAndConditions} />
       <AppStack.Screen name="Addtocart" component={Addtocart} />
-      <AppStack.Screen name="SplashScreen" component={SplashScreen} />
     </AppStack.Navigator>
   );
 }
 
+// -------------------- MAIN APP --------------------
 export default function App() {
   const { user, setUser } = useUserStore();
   const [showSplash, setShowSplash] = useState(true);
@@ -90,19 +95,18 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
-    // Safer network listener
+    // 1. Listen for network changes
     const unsubscribe = NetInfo.addEventListener(state => {
-      const connected = state?.isConnected ?? false;
-      setIsConnected(connected);
+      setIsConnected(state.isConnected ?? false);
     });
 
-    // Token check
+    // 2. Check if tokens exist and set user
     const checkStoredToken = async () => {
       try {
         const tokens = await getTokens();
         if (tokens?.accessToken) {
           const decoded = jwtDecode(tokens.accessToken);
-          setUser(decoded);
+          setUser(decoded); // Set user in store
         }
       } catch (err) {
         console.warn('Token check failed:', err);
@@ -110,13 +114,10 @@ export default function App() {
         setCheckingAuth(false);
       }
     };
-
     checkStoredToken();
 
-    // Splash timer
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2500);
+    // 3. Splash timer
+    const splashTimer = setTimeout(() => setShowSplash(false), 2500);
 
     return () => {
       clearTimeout(splashTimer);
@@ -124,12 +125,12 @@ export default function App() {
     };
   }, [setUser]);
 
-  // Splash screen
+  // -------------------- SPLASH SCREEN --------------------
   if (showSplash || checkingAuth) {
     return <SplashScreen navigation={null} />;
   }
 
-  // No Internet UI
+  // -------------------- NO INTERNET --------------------
   if (!isConnected) {
     return (
       <View style={styles.noInternetContainer}>
@@ -140,12 +141,11 @@ export default function App() {
     );
   }
 
-  // Main App
+  // -------------------- MAIN APP --------------------
   return (
     <QueryClientProvider client={queryClient}>
       <FavoritesProvider>
         <CartProvider>
-          {/* WRAPPING WITH SafeAreaProvider HERE */}
           <SafeAreaProvider>
             <NavigationContainer>
               <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -163,7 +163,7 @@ export default function App() {
   );
 }
 
-// Styles
+// -------------------- STYLES --------------------
 const styles = StyleSheet.create({
   noInternetContainer: {
     flex: 1,

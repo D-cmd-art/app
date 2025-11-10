@@ -1,7 +1,4 @@
-// App.js
-import React, { useRef, useState } from "react";
-import Login from '../pages/login';
-import { useNavigation } from "@react-navigation/native";
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,48 +7,45 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
 const slides = [
   {
-    id: "1",
-    title: "Search your Food",
-    description:
-      "Search your desired food to order",
-    image:require('../assets/foodsearching.png'),
-     
-    },
-  {
-    id: "2",
-    title: "Order your Food",
-    description:
-      "Order Your Favourite and delicious foods on one click",
-    image:
-     require('../assets/Order.png'), // Food
+    id: '1',
+    title: 'Search your Food',
+    description: 'Search your desired food to order',
+    image: require('../assets/foodsearching.png'),
   },
   {
-    id: "3",
-    title: "Enjoy Our Fast Delivery Services",
-    description: "Get your order delivered at your doorstep quickly and safely.",
-    image:
-      require('../assets/delivery.png'), // Food
+    id: '2',
+    title: 'Order your Food',
+    description: 'Order Your Favourite and delicious foods on one click',
+    image: require('../assets/Order.png'),
+  },
+  {
+    id: '3',
+    title: 'Enjoy Our Fast Delivery Services',
+    description: 'Get your order delivered at your doorstep quickly and safely.',
+    image: require('../assets/delivery.png'),
   },
 ];
 
 export default function Welcome() {
-  const navigation=useNavigation();
+  const navigation = useNavigation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef();
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < slides.length - 1) {
       flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      return navigation.navigate('Login');
+      await AsyncStorage.setItem('hasSeenWelcome', 'true');
+      navigation.navigate('Login');
     }
   };
 
@@ -63,48 +57,43 @@ export default function Welcome() {
 
   return (
     <SafeAreaView>
-<FlatList
-  data={slides}
-  ref={flatListRef}
-  horizontal
-  pagingEnabled
-  showsHorizontalScrollIndicator={false}
-  keyExtractor={(item) => item.id}
-  onViewableItemsChanged={onViewRef.current}
-  renderItem={({ item }) => (
-    <View style={styles.slideContainer}>
-      {/* Top Section: Image */}
-      <View style={styles.imageSection}>
-        <Image source={item.image} style={styles.image} />
-      </View>
-
-      {/* Bottom Section: Content */}
-      <View style={styles.textSection}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-        <View style={styles.dots}>
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                currentIndex === index && styles.activeDot,
-              ]}
-            />
-          ))}
-        </View>
-        <TouchableOpacity style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>
-            {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )}
-/></SafeAreaView>
-
+      <FlatList
+        data={slides}
+        ref={flatListRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        onViewableItemsChanged={onViewRef.current}
+        renderItem={({ item }) => (
+          <View style={styles.slideContainer}>
+            <View style={styles.imageSection}>
+              <Image source={item.image} style={styles.image} />
+            </View>
+            <View style={styles.textSection}>
+              <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.description}>{item.description}</Text>
+              <View style={styles.dots}>
+                {slides.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[styles.dot, currentIndex === index && styles.activeDot]}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity style={styles.button} onPress={handleNext}>
+                <Text style={styles.buttonText}>
+                  {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      />
+    </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   slideContainer: {
     width,
@@ -112,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   imageSection: {
-    flex: 2, 
+    flex: 2,
     justifyContent: 'center',
     marginTop: 60,
     alignItems: 'center',
@@ -130,10 +119,6 @@ const styles = StyleSheet.create({
     height: undefined,
     aspectRatio: 4 / 3,
     resizeMode: 'contain',
-  },
-  icon: {
-    fontSize: 30,
-    marginBottom: 10,
   },
   title: {
     fontSize: 22,
@@ -159,7 +144,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   activeDot: {
-  backgroundColor: '#92400e',
+    backgroundColor: '#92400e',
     width: 16,
   },
   button: {
