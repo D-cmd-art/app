@@ -46,7 +46,6 @@ export default function ConfirmOrder() {
   const CART_DISCOUNT = CART_SUBTOTAL * 0.02;
   const CART_TOTAL = CART_SUBTOTAL - CART_DISCOUNT;
 
-  // ✅ Go back button handler
   useEffect(() => {
     const backAction = () => {
       navigation.goBack();
@@ -56,15 +55,13 @@ export default function ConfirmOrder() {
     return () => backHandler.remove();
   }, [navigation]);
 
-  // ✅ Redirect if no address is set
   useEffect(() => {
     if (!location || !location.address) {
-      navigation.replace('MapPicker'); // change 'Map' to your actual map screen route name
+      navigation.replace('MapPicker');
       Alert.alert('Order Information', 'Please select location before confirming order');
     }
   }, [location, navigation]);
 
-  // ✅ Create order payload
   const createOrderPayload = () => {
     if (!phone) {
       Alert.alert('Missing Info', 'Please enter your phone number.');
@@ -72,25 +69,32 @@ export default function ConfirmOrder() {
     }
 
     if (paymentMethod === 'QRPAY' && !remark) {
-      Alert.alert('Missing Info', 'Please enter your username in Remarks.');
+      Alert.alert('Missing Info', 'Please enter your transaction ID / remarks.');
+      return null;
+    }
+
+    if (!location?.address || !location?.lat || !location?.lng) {
+      Alert.alert('Error', 'Location is missing or invalid.');
+      console.log('❌ Invalid location object:', location);
       return null;
     }
 
     const status = paymentMethod === 'cashondelivery' ? 'unpaid' : 'paid';
 
-    return {
+    const payload = {
       user: {
+        id: user?.id, // ✅ backend requires this
         name: user?.name,
-        id: user?.id,
         phone: user?.phone,
         email: user?.email,
       },
       location: {
         name: location?.address,
-        lat: location?.latitude,
-        lng: location?.longitude,
+        lat: location?.lat,
+        lng: location?.lng,
       },
       totalPayment: parseFloat(CART_TOTAL),
+      deliveryCharge: 0,
       products: items.map((item) => ({
         productId: item._id,
         quantity: item.quantity,
@@ -98,31 +102,37 @@ export default function ConfirmOrder() {
       status,
       deliveryNumber: phone,
       payment_method: paymentMethod,
-      ...(paymentMethod === 'QRPAY' && { Remark: remark }),
+      ...(paymentMethod === 'QRPAY' && { transactionId: remark }), // ✅ backend expects transactionId
     };
+
+    console.log('📦 Order Payload:', JSON.stringify(payload, null, 2));
+    return payload;
   };
 
-  // ✅ Confirm order
   const handleConfirmOrder = () => {
     const payload = createOrderPayload();
     if (!payload) return;
 
     setLoading(true);
+    console.log('🚀 Sending order mutation...');
+
     mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setLoading(false);
+        console.log('✅ Order Success Response:', data);
         Alert.alert('Order Placed', 'Your order has been placed!');
         clearCart();
         navigation.navigate('Tabs');
       },
-      onError: () => {
+      onError: (error) => {
         setLoading(false);
-        Alert.alert('Order Failed', 'Something went wrong.');
+        console.log('❌ Order Error:', error);
+        console.log('❌ Error Response Data:', error?.response?.data);
+        Alert.alert('Order Failed', error?.response?.data?.message || 'Something went wrong.');
       },
     });
   };
 
-  // ✅ WhatsApp redirect
   const handleWhatsAppRedirect = () => {
     const message = `QRPAY Payment details: ${remark}`;
     const phoneNumber = '9709095168';
@@ -138,20 +148,17 @@ export default function ConfirmOrder() {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.header}>Confirm Your Order</Text>
 
-          {/* User Info */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>User Info</Text>
             <Text style={styles.detail}>Name: {user?.name}</Text>
             <Text style={styles.detail}>Email: {user?.email}</Text>
           </View>
 
-          {/* Delivery Address */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Delivery Address</Text>
             <Text style={styles.detail}>{location?.address || 'No address selected'}</Text>
           </View>
 
-          {/* Phone Number */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Phone Number</Text>
             <TextInput
@@ -163,7 +170,6 @@ export default function ConfirmOrder() {
             />
           </View>
 
-          {/* Payment Method */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Payment Method</Text>
             {PAYMENT_OPTIONS.map((option) => (
@@ -177,41 +183,34 @@ export default function ConfirmOrder() {
             ))}
           </View>
 
-          {/* QRPAY Section */}
           {paymentMethod === 'QRPAY' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Add Funds via QRPAY, Imepay, Khalti or Mobile Banking
-              </Text>
+              <Text style={styles.sectionTitle}>Add Funds via QRPAY, Imepay, Khalti or Mobile Banking</Text>
               <Image
                 source={require('../assets/QR.jpg')}
                 style={styles.qrImage}
                 resizeMode="contain"
               />
-              <Text>Remarks</Text>
+              <Text>Transaction ID / Remarks</Text>
               <TextInput
                 style={styles.Remarksinput}
-                placeholder="Write your username"
+                placeholder="Enter transaction ID or remarks"
                 value={remark}
                 onChangeText={setRemark}
               />
-              <Text style={styles.noteText}>
-                Note: After payment, share a screenshot on our WhatsApp
-              </Text>
+              <Text style={styles.noteText}>Note: After payment, share a screenshot on our WhatsApp</Text>
               <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppRedirect}>
                 <Text style={styles.whatsappText}>Send to WhatsApp</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Total */}
           <View style={styles.totalBox}>
             <Text style={styles.totalText}>Total:</Text>
             <Text style={styles.totalAmount}>Rs. {CART_TOTAL.toFixed(2)}</Text>
           </View>
         </ScrollView>
 
-        {/* Confirm Button */}
         <TouchableOpacity
           style={[styles.confirmButton, loading && { opacity: 0.7 }]}
           onPress={handleConfirmOrder}
@@ -224,7 +223,7 @@ export default function ConfirmOrder() {
             <Text style={styles.confirmText}>CONFIRM ORDER</Text>
           )}
         </TouchableOpacity>
-      </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -232,8 +231,15 @@ export default function ConfirmOrder() {
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9f9f9', paddingBottom: Platform.OS === 'ios' ? 30 : 0 },
-  scrollContent: { padding: 20, paddingBottom: 120 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    paddingBottom: Platform.OS === 'ios' ? 30 : 0,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 120,
+  },
   header: {
     fontSize: width > 400 ? 24 : 20,
     fontWeight: 'bold',
@@ -252,8 +258,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionTitle: { fontSize: width > 400 ? 16 : 14, fontWeight: '600', color: '#A62A22', marginBottom: 6 },
-  detail: { fontSize: 15, color: '#444', marginBottom: 6 },
+  sectionTitle: {
+    fontSize: width > 400 ? 16 : 14,
+    fontWeight: '600',
+    color: '#A62A22',
+    marginBottom: 6,
+  },
+  detail: {
+    fontSize: 15,
+    color: '#444',
+    marginBottom: 6,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -276,24 +291,65 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  radio: { padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, marginBottom: 10, backgroundColor: '#fff' },
-  radioSelected: { borderColor: '#007AFF', backgroundColor: '#e6f2ff' },
-  radioText: { fontSize: 16, fontWeight: '500', color: '#333' },
-  qrImage: { width: 200, height: 200, alignSelf: 'center', marginVertical: 10 },
-  noteText: { color: '#ff0000' },
-  whatsappButton: { backgroundColor: '#25D366', paddingVertical: 12, borderRadius: 6, alignItems: 'center', marginTop: 10 },
-  whatsappText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  radio: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  radioSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#e6f2ff',
+  },
+  radioText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+    alignSelf: 'center',
+    marginVertical: 10,
+  },
+  noteText: {
+    color: '#ff0000',
+    fontSize: 13,
+    marginTop: 5,
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+    paddingVertical: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  whatsappText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   totalBox: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 0.5,
+    paddingVertical: 8,
     borderTopWidth: 0.5,
     borderTopColor: '#aa1212ff',
     marginTop: width > 400 ? 10 : 12,
   },
-  totalText: { fontSize: 18, fontWeight: '500', color: '#333' },
-  totalAmount: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50' },
+  totalText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+  },
+  totalAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
   confirmButton: {
     position: 'absolute',
     bottom: 0,
@@ -303,5 +359,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  confirmText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  confirmText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });
