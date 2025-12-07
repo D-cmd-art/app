@@ -16,6 +16,12 @@ const { width: deviceWidth } = Dimensions.get("window");
 const AllRestaurants = () => {
   const { data, isLoading, error } = useRestaurantList();
 
+  // Debugging — remove later if not needed
+  console.log("Restaurant Data:", data);
+
+  /** ---------------------------------
+   * Render Loader
+   -----------------------------------*/
   const renderLoader = () => (
     <View style={styles.loaderContainer}>
       <SkeletonPlaceholder borderRadius={10}>
@@ -31,38 +37,65 @@ const AllRestaurants = () => {
     </View>
   );
 
+  /** ---------------------------------
+   * Render Error
+   -----------------------------------*/
   const renderError = () => (
     <View style={styles.center}>
       <Text style={styles.errorText}>Error loading restaurants</Text>
     </View>
   );
 
+  /** ---------------------------------
+   * Render Empty State
+   -----------------------------------*/
+  const renderEmpty = () => (
+    <View style={styles.center}>
+      <Text style={styles.emptyText}>No restaurants found.</Text>
+    </View>
+  );
+
+  /** ---------------------------------
+   * Render Restaurants
+   -----------------------------------*/
   const renderRestaurants = () => (
     <ScrollView contentContainerStyle={styles.content}>
-      {data?.map((item) => (
+      {data.map((item) => (
         <RestaurantCard key={item._id} restaurant={item} />
       ))}
     </ScrollView>
   );
 
+  /** ---------------------------------
+   * Main return
+   -----------------------------------*/
   return (
     <View style={styles.section}>
       <View style={styles.header}>
         <Text style={styles.title}>All Restaurants</Text>
         <Ionicons
-                     name="arrow-forward-circle-outline"
-                     size={deviceWidth * 0.08}
-                     color="#92400e"
-                   />
+          name="arrow-forward-circle-outline"
+          size={deviceWidth * 0.08}
+          color="#e91313ff"
+        />
       </View>
 
-      {isLoading ? renderLoader() : error ? renderError() : renderRestaurants()}
+      {isLoading
+        ? renderLoader()
+        : error
+        ? renderError()
+        : data?.length === 0
+        ? renderEmpty()
+        : renderRestaurants()}
     </View>
   );
 };
 
 export default AllRestaurants;
 
+/* ----------------------------------------------
+ * Styles
+ ------------------------------------------------*/
 const styles = StyleSheet.create({
   section: {
     marginVertical: 10,
@@ -78,7 +111,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: deviceWidth * 0.045,
     fontWeight: "bold",
-        color: "#92400e",
+    color: "#e91313ff",
   },
   content: {
     paddingBottom: 20,
@@ -90,6 +123,11 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: "red",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  emptyText: {
+    color: "#7a7777ff",
     fontSize: 16,
     fontWeight: "500",
   },

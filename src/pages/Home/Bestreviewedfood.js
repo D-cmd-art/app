@@ -23,10 +23,11 @@ const BestReviewedFood = () => {
   const { data, isLoading, error } = useProductList();
   const flatListRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [userTouched, setUserTouched] = useState(false);
 
   const products = data?.filter((item) => item.rating?.average > 4) || [];
 
-  // ✅ FIX: Initialize animatedValues only once
+  // Animated values for fade/slide in
   const animatedValues = useRef([]);
 
   useEffect(() => {
@@ -51,17 +52,28 @@ const BestReviewedFood = () => {
     }
   }, [products]);
 
+  // Auto-scroll with pause on user touch
   useEffect(() => {
     if (!products.length) return;
 
     const interval = setInterval(() => {
+      if (userTouched) return; // skip auto-scroll while user is interacting
+
       const nextIndex = (currentIndex + 1) % products.length;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setCurrentIndex(nextIndex);
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [currentIndex, products.length]);
+  }, [currentIndex, products.length, userTouched]);
+
+  // Reset userTouched after 5s
+  useEffect(() => {
+    if (userTouched) {
+      const timeout = setTimeout(() => setUserTouched(false), 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [userTouched]);
 
   if (isLoading) return <SkeletonLoader />;
   if (error)
@@ -84,7 +96,7 @@ const BestReviewedFood = () => {
             <Ionicons
               name="arrow-forward-circle-outline"
               size={deviceWidth * 0.08}
-              color="#92400e"
+              color="#e91313ff"
             />
           </TouchableOpacity>
         </View>
@@ -94,14 +106,20 @@ const BestReviewedFood = () => {
           ref={flatListRef}
           data={products}
           horizontal
-          pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => item._id || `product-${index}`}
           getItemLayout={(data, index) => ({
-            length: deviceWidth * 0.45 + deviceWidth * 0.04,
-            offset: (deviceWidth * 0.45 + deviceWidth * 0.04) * index,
+            length: deviceWidth * 0.55,
+            offset: deviceWidth * 0.55 * index,
             index,
           })}
+          snapToInterval={deviceWidth * 0.55}   // ✅ snap to card width
+          snapToAlignment="center"              // ✅ center cards
+          decelerationRate="fast"               // ✅ smooth momentum
+          contentContainerStyle={{
+            paddingHorizontal: deviceWidth * 0.04,
+          }}
+          onScrollBeginDrag={() => setUserTouched(true)}
           renderItem={({ item, index }) => {
             const opacity = animatedValues.current[index] || new Animated.Value(1);
             const translateY = opacity.interpolate({
@@ -147,11 +165,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: deviceWidth * 0.05,
     fontWeight: "700",
-    color: "#92400e",
+    color: "#e91313ff",
   },
   cardWrapper: {
     marginRight: deviceWidth * 0.04,
-    width: deviceWidth * 0.45,
+    width: deviceWidth * 0.55, // ✅ slightly wider for better snap
   },
   noProducts: {
     fontSize: deviceWidth * 0.04,

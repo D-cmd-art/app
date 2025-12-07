@@ -36,64 +36,74 @@ const Order = () => {
     return () => backHandler.remove();
   }, [navigation]);
 
-  const renderOrder = ({ item }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.headerRow}>
-        <Text style={styles.orderId}>Order #{item.orderId?.slice(0, 10)}</Text>
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: item.paymentStatus === 'paid' ? '#dcfce7' : '#e0e7ff' },
-          ]}
-        >
-          <Text
+  const renderOrder = ({ item }) => {
+    // Override paymentStatus to 'paid' if order is completed
+    const displayPaymentStatus =
+      item.subStatus?.toLowerCase() === 'completed' ? 'paid' : item.paymentStatus || 'unpaid';
+
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.headerRow}>
+          <Text style={styles.orderId}>Order #{item.orderId?.slice(0, 10)}</Text>
+          <View
             style={[
-              styles.badgeText,
-              { color: item.paymentStatus === 'paid' ? '#ff6b6bff' : '#173483ff' },
+              styles.badge,
+              { backgroundColor: displayPaymentStatus === 'paid' ? '#dcfce7' : '#e0e7ff' },
             ]}
           >
-            {item.paymentStatus || 'unpaid'}
+            <Text
+              style={[
+                styles.badgeText,
+                { color: displayPaymentStatus === 'paid' ? '#22c55e' : '#173483ff' },
+              ]}
+            >
+              {displayPaymentStatus}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.orderText}>
+          Date: {new Date(item.createdAt).toLocaleDateString()}
+        </Text>
+        <Text style={styles.orderText}>Payment: {item.payment_method || 'N/A'}</Text>
+        <Text style={styles.orderText}>Total Amount: NPR {item.totalPayment?.toFixed(2)}</Text>
+        <Text style={styles.orderstatus}>
+          Orderstatus: {item.subStatus || 'pending'}
+        </Text>
+
+        <Text style={styles.itemHeader}>Order Items</Text>
+        {item.products &&
+          item.products.map((product, index) => (
+            <View key={index} style={styles.itemRow}>
+              <Image
+                source={{
+                  uri: product.image || 'https://via.placeholder.com/80x80.png?text=Item',
+                }}
+                style={styles.foodImage}
+              />
+              <View style={styles.itemInfo}>
+                <Text style={styles.foodName} numberOfLines={1}>
+                  {product.name}
+                </Text>
+                <Text style={styles.foodDetails}>
+                  Qty: {product.quantity} | Total: NPR {product.price?.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          ))}
+
+        <View style={[styles.footerRow, { marginTop: 8 }]}>
+          <Icon name="location-on" size={16} color="#999" style={{ marginRight: 5 }} />
+          <Text style={styles.addressText} numberOfLines={1}>
+            Deliver to: {item.location?.name || 'N/A'}
           </Text>
         </View>
       </View>
-
-      <Text style={styles.orderText}>Date: {new Date(item.createdAt).toLocaleDateString()}</Text>
-      <Text style={styles.orderText}>Payment: {item.payment_method || 'N/A'}</Text>
-      <Text style={styles.orderText}>Total Amount: NPR {item.totalPayment?.toFixed(2)}</Text>
-      <Text style={styles.orderstatus}>Orderstatus: {item.subStatus || 'pending'}</Text>
-
-      <Text style={styles.itemHeader}>Order Items</Text>
-      {item.products &&
-        item.products.map((product, index) => (
-          <View key={index} style={styles.itemRow}>
-            <Image
-              source={{
-                uri: product.image || 'https://via.placeholder.com/80x80.png?text=Item',
-              }}
-              style={styles.foodImage}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.foodName} numberOfLines={1}>
-                {product.name}
-              </Text>
-              <Text style={styles.foodDetails}>
-                Qty: {product.quantity} | Total: NPR {product.price?.toFixed(2)}
-              </Text>
-            </View>
-          </View>
-        ))}
-
-      <View style={[styles.footerRow, { marginTop: 8 }]}>
-        <Icon name="location-on" size={16} color="#999" style={{ marginRight: 5 }} />
-        <Text style={styles.addressText} numberOfLines={1}>
-          Deliver to: {item.location?.name || 'N/A'}
-        </Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#A62A22' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#ee1212ff' }}>
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#2f9e44" />
@@ -125,6 +135,7 @@ const Order = () => {
 };
 
 export default Order;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -135,7 +146,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     padding: RESPONSIVE_PADDING,
-    backgroundColor: '#d4840bff',
+    backgroundColor: '#ff1515ff',
     borderBottomColor: '#eee',
     borderBottomWidth: 1,
   },
@@ -156,7 +167,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: '#ff1c1cff',
     marginTop: 15,
   },
   orderCard: {

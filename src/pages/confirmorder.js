@@ -8,300 +8,384 @@ import {
   TextInput,
   Alert,
   Image,
+  ActivityIndicator,
+  ToastAndroid,
   Linking,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useUserStore } from '../utils/store/userStore';
 import { useCartStore } from '../utils/store/cartStore';
 import { useMapStore } from '../utils/store/mapStore';
-import { useOrder } from '../hooks/useOrder';
 
-const PAYMENT_OPTIONS = [
-  { key: 'cashondelivery', label: '💵 Cash on Delivery (COD)' },
-  { key: 'QRPAY', label: '📱 Pay with QR' },
-];
+import { useOrder } from '../hooks/useOrder';
+import { useFreeDelivery } from '../hooks/useFreeDelivery';
+import { isValidNepaliPhone } from '../utils/validation';
+
+// Haversine formula
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function getSuggestedDeliveryCharge(km) {
+  if (km <= 1) return 20;
+  if (km <= 2) return 30;
+  if (km <= 3) return 40;
+  if (km <= 4) return 50;
+  return 60;
+}
 
 export default function ConfirmOrder() {
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_OPTIONS[0].key);
-  const [phone, setPhone] = useState('');
-  const [remark, setRemark] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const { mutate } = useOrder();
   const navigation = useNavigation();
+  const { mutate } = useOrder();
 
-  const user = useUserStore((state) => state.user);
-  const items = useCartStore((state) => state.items);
-  const clearCart = useCartStore((state) => state.clearCart);
-  const location = useMapStore((state) => state.location);
+  const user = useUserStore((s) => s.user);
+  const items = useCartStore((s) => s.items);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const location = useMapStore((s) => s.location);
+  const setDistance = useMapStore((s) => s.setDistance);
+  const distance = useMapStore((s) => s.distance);
 
-  const CART_SUBTOTAL = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const CART_DISCOUNT = CART_SUBTOTAL * 0.02;
-  const CART_TOTAL = CART_SUBTOTAL - CART_DISCOUNT;
+  const userPhone = user?.phone || ''; // fetched from DB
+  const [deliveryPhone, setDeliveryPhone] = useState(userPhone); // default editable phone
 
-  // ✅ Go back button handler
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [txnId, setTxnId] = useState('');
+  const [note, setNote] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
+
+  const userId = user?.id ?? 'no-user';
+  const { data: freeDeliveryNumber = 0, refetch } = useFreeDelivery(userId);
+
+  const restaurantLocation =
+    items.length > 0 && items[0].restaurant
+      ? {
+          lat: parseFloat(
+            items[0].restaurant.lat ?? items[0].restaurant.location?.lat
+          ),
+          lng: parseFloat(
+            items[0].restaurant.lng ?? items[0].restaurant.location?.lng
+          ),
+        }
+      : null;
+
+  // Handle hardware back button
   useEffect(() => {
     const backAction = () => {
       navigation.goBack();
       return true;
     };
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
     return () => backHandler.remove();
   }, [navigation]);
 
-  // ✅ Redirect if no address is set
+  // Calculate distance
   useEffect(() => {
-    if (!location || !location.address) {
-      navigation.replace('MapPicker'); // change 'Map' to your actual map screen route name
-      Alert.alert('Order Information', 'Please select location before confirming order');
+    if (location && restaurantLocation) {
+      const dist = getDistanceFromLatLonInKm(
+        location.lat,
+        location.lng,
+        restaurantLocation.lat,
+        restaurantLocation.lng
+      );
+      setDistance(dist);
     }
-  }, [location, navigation]);
+  }, [location, restaurantLocation]);
 
-  // ✅ Create order payload
+  // Calculate delivery charge
+  useEffect(() => {
+    if (!distance) return;
+    setDeliveryCharge(freeDeliveryNumber > 0 ? 0 : getSuggestedDeliveryCharge(distance));
+  }, [distance, freeDeliveryNumber]);
+
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = subtotal * 0.02;
+  const discountedTotal = subtotal - discount;
+  const finalPrice = discountedTotal + deliveryCharge;
+
   const createOrderPayload = () => {
-    if (!phone) {
-      Alert.alert('Missing Info', 'Please enter your phone number.');
+    if (!user || !location) {
+      Alert.alert('Error', 'Please select your delivery location.');
       return null;
     }
-
-    if (paymentMethod === 'QRPAY' && !remark) {
-      Alert.alert('Missing Info', 'Please enter your username in Remarks.');
+    if (items.length === 0) {
+      Alert.alert('Error', 'Your cart is empty.');
       return null;
     }
-
-    const status = paymentMethod === 'cashondelivery' ? 'unpaid' : 'paid';
+    if (!isValidNepaliPhone(deliveryPhone)) {
+      Alert.alert('Invalid Phone', 'Please enter a valid Nepali delivery phone number.');
+      return null;
+    }
+    if (paymentMethod === 'cash' && subtotal > 3000) {
+      Alert.alert('Restriction', 'Cannot place orders above NPR 3000 using COD.');
+      return null;
+    }
+    if (paymentMethod === 'QRPAY' && (!txnId.trim() || !note.trim())) {
+      Alert.alert('Required', 'Please enter transaction details.');
+      return null;
+    }
 
     return {
       user: {
-        name: user?.name,
-        id: user?.id,
-        phone: user?.phone,
-        email: user?.email,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: userPhone, // registered user phone
       },
       location: {
-        name: location?.address,
-        lat: location?.latitude,
-        lng: location?.longitude,
+        name: location.address,
+        lat: location.lat,
+        lng: location.lng,
       },
-      totalPayment: parseFloat(CART_TOTAL),
+      totalPayment: parseFloat(finalPrice),
+      deliveryCharge,
       products: items.map((item) => ({
         productId: item._id,
         quantity: item.quantity,
       })),
-      status,
-      deliveryNumber: phone,
+      status: paymentMethod === 'QRPAY' ? 'paid' : 'unpaid',
+      deliveryNumber: deliveryPhone, // user-entered delivery phone
       payment_method: paymentMethod,
-      ...(paymentMethod === 'QRPAY' && { Remark: remark }),
+      ...(paymentMethod === 'QRPAY' && { transactionId: txnId, note }),
     };
   };
 
-  // ✅ Confirm order
-  const handleConfirmOrder = () => {
+  const handleConfirm = async () => {
+    if (finalPrice > 3000 && paymentMethod === 'cash') {
+      ToastAndroid.show(
+        '❌ Cannot order more than Rs. 3000 Through COD',
+        ToastAndroid.LONG
+      );
+      return;
+    }
+
     const payload = createOrderPayload();
     if (!payload) return;
 
     setLoading(true);
+
     mutate(payload, {
-      onSuccess: () => {
+      onSuccess: async () => {
         setLoading(false);
-        Alert.alert('Order Placed', 'Your order has been placed!');
+        Alert.alert('Success', 'Order placed successfully!');
         clearCart();
-        navigation.navigate('Tabs');
+        await refetch();
+
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Tabs' }], // replace 'Tabs' with your home page
+          })
+        );
       },
-      onError: () => {
+      onError: (error) => {
         setLoading(false);
-        Alert.alert('Order Failed', 'Something went wrong.');
+        Alert.alert('Failed', error?.response?.data?.message || 'Something went wrong.');
       },
     });
   };
 
-  // ✅ WhatsApp redirect
-  const handleWhatsAppRedirect = () => {
-    const message = `QRPAY Payment details: ${remark}`;
-    const phoneNumber = '9709095168';
-    Linking.openURL(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={styles.header}>Confirm Your Order</Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.header}>Confirm Your Order</Text>
 
-          {/* User Info */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>User Info</Text>
-            <Text style={styles.detail}>Name: {user?.name}</Text>
-            <Text style={styles.detail}>Email: {user?.email}</Text>
+        {freeDeliveryNumber > 0 ? (
+          <Text style={styles.freeText}>
+            🎉 Free Deliveries Left: {freeDeliveryNumber}
+          </Text>
+        ) : (
+          <View style={styles.tableBox}>
+            <Text style={styles.tableTitle}>Delivery Charges</Text>
+            {[1, 2, 3, 4].map((km) => (
+              <View key={km} style={styles.tableRow}>
+                <Text>{km} km</Text>
+                <Text>{getSuggestedDeliveryCharge(km)} NPR</Text>
+              </View>
+            ))}
+            <View style={styles.tableRow}>
+              <Text>5+ km</Text>
+              <Text>60 NPR</Text>
+            </View>
           </View>
+        )}
 
-          {/* Delivery Address */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Delivery Address</Text>
-            <Text style={styles.detail}>{location?.address || 'No address selected'}</Text>
-          </View>
+        <View style={styles.box}>
+          <Text style={styles.title}>Delivery Location</Text>
+          <Text style={styles.detail}>{location?.address || 'No location selected'}</Text>
+          <TouchableOpacity
+            style={styles.mapBtn}
+            onPress={() => navigation.navigate('MapPicker')}
+          >
+            <Text style={styles.mapBtnText}>📍 Choose Location on Map</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Phone Number */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Phone Number</Text>
+        
+
+        <View style={styles.box}>
+          <Text style={styles.title}>Delivery Phone Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter delivery phone number"
+            value={deliveryPhone}
+            onChangeText={setDeliveryPhone}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.box}>
+          <Text style={styles.title}>Payment Method</Text>
+          <TouchableOpacity
+            style={[styles.radio, paymentMethod === 'cash' && styles.selected]}
+            onPress={() => setPaymentMethod('cash')}
+          >
+            <Text>💵 Cash on Delivery</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.radio, paymentMethod === 'QRPAY' && styles.selected]}
+            onPress={() => setPaymentMethod('QRPAY')}
+          >
+            <Text>📱 Pay with QRPAY</Text>
+          </TouchableOpacity>
+        </View>
+
+        {paymentMethod === 'QRPAY' && (
+          <View style={styles.box}>
+            <Text style={styles.note}>Add Fund via QRPAY, eSewa, Khalti, IMEPay or Mobile Banking</Text>
+            <Image source={require('../assets/QR.jpeg')} style={styles.QRPAY} />
+            <Text style={styles.title}>Account Holder Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter phone number"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
+              placeholder="Enter name"
+              value={note}
+              onChangeText={setNote}
             />
-          </View>
+            <Text style={styles.title}>Transaction ID</Text>
+            <TextInput
+              style={[styles.input, { marginTop: 10 }]}
+              placeholder="Enter transaction ID"
+              value={txnId}
+              onChangeText={setTxnId}
+            />
+            <Text style={styles.note}>NOTE: After payment, share a screenshot on WhatsApp</Text>
 
-          {/* Payment Method */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            {PAYMENT_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.key}
-                style={[styles.radio, paymentMethod === option.key && styles.radioSelected]}
-                onPress={() => setPaymentMethod(option.key)}
-              >
-                <Text style={styles.radioText}>{option.label}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={styles.whatsappBtn}
+              onPress={() => {
+                if (!note.trim() || !txnId.trim()) {
+                  Alert.alert(
+                    'Required',
+                    'Please enter account holder name and transaction ID before contacting via WhatsApp.'
+                  );
+                  return;
+                }
+                const phoneNumber = '9709095168';
+                const message = `Hello, I have completed the payment.\nAccount Holder Name: ${note}\nTransaction ID: ${txnId}`;
+                const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+                Linking.openURL(url).catch(() => {
+                  Alert.alert('Error', 'Make sure WhatsApp is installed on your device.');
+                });
+              }}
+            >
+              <Text style={styles.whatsappText}>💬 Contact via WhatsApp</Text>
+            </TouchableOpacity>
           </View>
+        )}
 
-          {/* QRPAY Section */}
-          {paymentMethod === 'QRPAY' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Add Funds via QRPAY, Imepay, Khalti or Mobile Banking
+        <View style={styles.box}>
+          <Text style={styles.sectionTitle}>🛍️ Cart Items</Text>
+          {items.map((item) => (
+            <View key={item._id} style={styles.cartRow}>
+              <Text style={styles.cartItem}>
+                {item.name} x {item.quantity}
               </Text>
-              <Image
-                source={require('../assets/QR.jpg')}
-                style={styles.qrImage}
-                resizeMode="contain"
-              />
-              <Text>Remarks</Text>
-              <TextInput
-                style={styles.Remarksinput}
-                placeholder="Write your username"
-                value={remark}
-                onChangeText={setRemark}
-              />
-              <Text style={styles.noteText}>
-                Note: After payment, share a screenshot on our WhatsApp
-              </Text>
-              <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppRedirect}>
-                <Text style={styles.whatsappText}>Send to WhatsApp</Text>
-              </TouchableOpacity>
+              <Text style={styles.cartPrice}>Rs. {(item.price * item.quantity).toFixed(2)}</Text>
             </View>
-          )}
+          ))}
+        </View>
 
-          {/* Total */}
-          <View style={styles.totalBox}>
-            <Text style={styles.totalText}>Total:</Text>
-            <Text style={styles.totalAmount}>Rs. {CART_TOTAL.toFixed(2)}</Text>
+        <View style={styles.summaryBox}>
+          <Text style={styles.sectionTitle}>🛒 Order Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>Rs. {subtotal.toFixed(2)}</Text>
           </View>
-        </ScrollView>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Discount (2%)</Text>
+            <Text style={styles.summaryValue}>- Rs. {discount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Delivery Charge</Text>
+            <Text style={styles.summaryValue}>
+              {deliveryCharge === 0 ? 'Free' : `Rs. ${deliveryCharge.toFixed(2)}`}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.finalLabel}>Grand Total</Text>
+            <Text style={styles.finalValue}>Rs. {finalPrice.toFixed(2)}</Text>
+          </View>
+        </View>
+      </ScrollView>
 
-        {/* Confirm Button */}
-        <TouchableOpacity
-          style={[styles.confirmButton, loading && { opacity: 0.7 }]}
-          onPress={handleConfirmOrder}
-          activeOpacity={0.8}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.confirmText}>CONFIRM ORDER</Text>
-          )}
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+      <TouchableOpacity
+        style={styles.confirmBtn}
+        onPress={handleConfirm}
+        disabled={loading}
+      >
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmText}>CONFIRM ORDER</Text>}
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9f9f9', paddingBottom: Platform.OS === 'ios' ? 30 : 0 },
-  scrollContent: { padding: 20, paddingBottom: 120 },
-  header: {
-    fontSize: width > 400 ? 24 : 20,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionTitle: { fontSize: width > 400 ? 16 : 14, fontWeight: '600', color: '#A62A22', marginBottom: 6 },
-  detail: { fontSize: 15, color: '#444', marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: '#fff',
-    marginBottom: 10,
-  },
-  Remarksinput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: '#fff',
-    marginBottom: 10,
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  radio: { padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 6, marginBottom: 10, backgroundColor: '#fff' },
-  radioSelected: { borderColor: '#007AFF', backgroundColor: '#e6f2ff' },
-  radioText: { fontSize: 16, fontWeight: '500', color: '#333' },
-  qrImage: { width: 200, height: 200, alignSelf: 'center', marginVertical: 10 },
-  noteText: { color: '#ff0000' },
-  whatsappButton: { backgroundColor: '#25D366', paddingVertical: 12, borderRadius: 6, alignItems: 'center', marginTop: 10 },
-  whatsappText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  totalBox: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 0.5,
-    borderTopWidth: 0.5,
-    borderTopColor: '#aa1212ff',
-    marginTop: width > 400 ? 10 : 12,
-  },
-  totalText: { fontSize: 18, fontWeight: '500', color: '#333' },
-  totalAmount: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50' },
-  confirmButton: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FF5733',
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  confirmText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  container: { flex: 1, backgroundColor: '#f2f2f2' },
+  content: { padding: 16 },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: '#333' },
+  box: { backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  title: { fontSize: 16, fontWeight: '600', marginBottom: 6, color: '#444' },
+  detail: { fontSize: 15, color: '#555' },
+  note: { fontSize: 15, fontWeight: '600', color: '#ff2e2eff', marginVertical: 4 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 15, backgroundColor: '#fafafa' },
+  mapBtn: { marginTop: 10, backgroundColor: '#fa6109ff', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  mapBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  radio: { padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginVertical: 6, backgroundColor: '#fafafa' },
+  selected: { borderColor: '#ec4b00ff', backgroundColor: '#ffe6e6' },
+  QRPAY: { width: 180, height: 180, alignSelf: 'center', marginVertical: 12 },
+  freeText: { fontSize: 16, fontWeight: '600', color: 'green', marginBottom: 12, textAlign: 'center' },
+  tableBox: { backgroundColor: '#fff', padding: 12, borderRadius: 10, marginBottom: 12 },
+  tableTitle: { fontWeight: '600', marginBottom: 8, fontSize: 15 },
+  tableRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10, color: '#333' },
+  cartRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
+  cartItem: { fontSize: 15, color: '#555' },
+  cartPrice: { fontSize: 15, fontWeight: '600', color: '#333' },
+  summaryBox: { backgroundColor: '#fff', padding: 16, borderRadius: 10, marginTop: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
+  summaryLabel: { fontSize: 15, color: '#555' },
+  summaryValue: { fontSize: 15, fontWeight: '600', color: '#333' },
+  divider: { height: 1, backgroundColor: '#ddd', marginVertical: 8 },
+  finalLabel: { fontSize: 16, fontWeight: '700', color: '#222' },
+  finalValue: { fontSize: 18, fontWeight: 'bold', color: '#f80707ff' },
+  confirmBtn: { backgroundColor: '#ff0707ff', padding: 16, borderRadius: 10, margin: 16, alignItems: 'center' },
+  confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  whatsappBtn: { backgroundColor: '#25D366', padding: 12, borderRadius: 8, marginTop: 10, alignItems: 'center' },
+  whatsappText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 });

@@ -74,7 +74,7 @@ const Tabs = () => {
                         <Ionicons
                             name={focused ? 'home' : 'home-outline'}
                             size={26}
-                            color={focused ? '#92400e' : '#92400e'}
+                            color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
                 }}
@@ -87,7 +87,7 @@ const Tabs = () => {
                         <Ionicons
                             name={focused ? 'heart' : 'heart-outline'}
                             size={26}
-                            color={focused ? '#92400e' : '#92400e'}
+                            color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
                 }}
@@ -100,7 +100,7 @@ const Tabs = () => {
                         <Ionicons
                             name={focused ? 'cart' : 'cart-outline'}
                             size={26}
-                            color={focused ? '#92400e' : '#92400e'}
+                            color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
                 }}
@@ -113,7 +113,7 @@ const Tabs = () => {
                         <Ionicons
                             name={focused ? 'person' : 'person-outline'}
                             size={26}
-                            color={focused ? '#92400e' : '#92400e'}
+                            color={focused ? '#fc1313ff' : '#f80808ff'}
                         />
                     ),
                 }}

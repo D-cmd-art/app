@@ -79,9 +79,8 @@ export default LocationBar;
 
 const styles = StyleSheet.create({
   headerWrapper: {
-    backgroundColor: "#A62A22",
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    backgroundColor: "#fc0b0bff",
+
     paddingBottom: 20,
     shadowColor: "#000",
     shadowOpacity: 0.1,
@@ -108,7 +107,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#facc15",
+    backgroundColor: "rgba(255, 22, 22, 0.79)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
@@ -138,7 +137,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: "#ef4444",
+    backgroundColor: "#f00303ff",
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -157,7 +156,7 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     marginLeft: 8,
-    color: "#9b1010ff",
+    color: "#ff1616ff",
     fontSize: 14,
   },
 });

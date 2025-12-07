@@ -5,24 +5,21 @@ import {
   FlatList,
   ActivityIndicator,
   StyleSheet,
-  Image,
-  Dimensions,
   TouchableOpacity,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { useProductList } from "../../hooks/useProductList";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { useCartStore } from "../../utils/store/cartStore";
-import Toast from "react-native-toast-message";
 
-const { width } = Dimensions.get("window");
+import { useProductList } from "../../hooks/useProductList";
+import { useCartStore } from "../../utils/store/cartStore";
+import ProductCard from "../components/ProductCard";
 
 const SubcategoryScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+
   const selectedCategory = route.params?.category;
-  const { addItem } = useCartStore();
   const { data: allProducts, isLoading, error } = useProductList();
 
   const filteredProducts =
@@ -30,14 +27,16 @@ const SubcategoryScreen = () => {
       ? allProducts?.filter((p) => p.category === selectedCategory)
       : allProducts;
 
+  // 🔹 Loading
   if (isLoading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#92400e" />
+        <ActivityIndicator size="large" color="#ee1212ff" />
         <Text style={styles.loadingText}>Loading products...</Text>
       </View>
     );
 
+  // 🔹 Error
   if (error)
     return (
       <View style={styles.center}>
@@ -45,6 +44,7 @@ const SubcategoryScreen = () => {
       </View>
     );
 
+  // 🔹 Empty category
   if (!filteredProducts || filteredProducts.length === 0)
     return (
       <View style={styles.center}>
@@ -54,52 +54,20 @@ const SubcategoryScreen = () => {
       </View>
     );
 
-  // 🔹 Cart handler (Daraz-style)
-  const handleCart = (item) => {
-    addItem(item);
-    Toast.show({
-      type: "darazSuccess",
-      text1: "Order created successfully 🎉",
-      text2: `${item.name} added to your cart.`,
-      visibilityTime: 1600,
-      position: "bottom",
-    });
-  };
-
-  // 🔹 Food order handler (Food-delivery style)
-  
-
+  // 🔹 2-column product card
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8}>
-      <Image
-        source={{
-          uri:
-            item.photos?.[0] ||
-            "https://images.unsplash.com/photo-1600891964599-f61ba0e24092",
-        }}
-        style={styles.image}
+    <View style={styles.cardWrapper}>
+      <ProductCard
+        item={item}
+        onPress={() => navigation.navigate("ProductDetails", { product: item })}
+        onFavouriteUpdate={() => {}}
       />
-      <View style={styles.cardInfo}>
-        <Text style={styles.name} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.price}>Rs. {item.price}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: "#92400e" }]}
-        onPress={() => handleCart(item)}
-      >
-        <Ionicons name="cart-outline" size={18} color="#ffffffff" />
-      </TouchableOpacity>
-
-     
-    </TouchableOpacity>
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🔹 Header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -107,154 +75,134 @@ const SubcategoryScreen = () => {
         <Text style={styles.headerTitle}>{selectedCategory}</Text>
       </View>
 
-      {/* 🔹 Grid */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderItem}
-        keyExtractor={(item) => item._id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 16 }}
-      />
+      {/* Product Grid */}
+      <View style={{ flex: 1, marginBottom: 70 }}>
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 16 }}
+        />
+      </View>
 
-      {/* ✅ Toast container with both styles */}
-      <Toast config={toastConfig} />
+      {/* 🔥 Bottom Floating Cart Bar */}
+      <BottomCartBar navigation={navigation} />
     </SafeAreaView>
   );
 };
 
 export default SubcategoryScreen;
 
-/* ✅ Toast Config for both Daraz and Food sides */
-const toastConfig = {
-  darazSuccess: ({ text1, text2 }) => (
-    <View style={[styles.toastContainer, { backgroundColor: "#85551fff" }]}>
-      <Ionicons name="cart-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-      <View>
-        <Text style={styles.toastTitle}>{text1}</Text>
-        {text2 ? <Text style={styles.toastSubtitle}>{text2}</Text> : null}
-      </View>
-    </View>
-  ),
+//
+// 🔥 Bottom Floating Cart Bar Component
+//
+const BottomCartBar = ({ navigation }) => {
+  const { items } = useCartStore();
 
- 
+  if (!items || items.length === 0) return null;
+
+  const totalQuantity = items.reduce((a, b) => a + b.quantity, 0);
+  const totalPrice = items.reduce((a, b) => a + b.quantity * b.price, 0);
+
+  return (
+    <View style={styles.bottomCartBar}>
+      <View>
+        <Text style={styles.cartBottomText}>{totalQuantity} items</Text>
+        <Text style={styles.cartBottomText}>Total: Rs. {totalPrice}</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.cartBottomBtn}
+        onPress={() => navigation.navigate("Addtocart")}
+      >
+        <Text style={styles.cartBottomBtnText}>View Cart</Text>
+      </TouchableOpacity>
+    </View>
+  );
 };
 
-/*  Styles */
-const CARD_WIDTH = (width - 48) / 2;
-
+//
+// =============================================
+// Styles
+// =============================================
+//
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
+  container: { flex: 1, backgroundColor: "#fff" },
+
+  // Grid Layout
+  row: {
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
+  cardWrapper: {
+    width: "48%",
+  },
+
+  // Center loader
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: {
-    marginTop: 8,
-    color: "#92400e",
-  },
-  noItemsText: {
-    fontSize: 16,
-    color: "#888",
-    textAlign: "center",
-  },
-  /* 🔹 Header */
+  loadingText: { marginTop: 8, color: "#ee1212ff" },
+  noItemsText: { fontSize: 16, color: "#888", textAlign: "center" },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#92400e",
+    backgroundColor: "#ee1212ff",
     paddingVertical: 14,
-    paddingHorizontal: 16,
-    elevation: 4,
   },
-  backBtn: {
-    position: "absolute",
-    left: 16,
-    padding: 4,
-  },
+  backBtn: { position: "absolute", left: 16 },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#fff",
   },
-  /* 🔹 Grid Cards */
-  row: {
+
+  // 🔥 Bottom Cart Bar
+  bottomCartBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#ffffff",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
     justifyContent: "space-between",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    elevation: 3,
+    alignItems: "center",
+
+    elevation: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    marginBottom: 16,
-    width: CARD_WIDTH,
-    overflow: "hidden",
-    position: "relative",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -3 },
   },
-  image: {
-    width: "100%",
-    height: CARD_WIDTH * 0.8,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-  },
-  cardInfo: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  name: {
-    fontSize: 14,
+
+  cartBottomText: {
+    fontSize: 15,
     fontWeight: "600",
     color: "#333",
   },
-  price: {
-    fontSize: 13,
-    color: "#92400e",
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  addButton: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
-    borderRadius: 20,
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
+
+  cartBottomBtn: {
+    backgroundColor: "#ee1212ff",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 
-  /* ✅ Toast Styles */
-  toastContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  toastTitle: {
+  cartBottomBtnText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 15,
-  },
-  toastSubtitle: {
-    color: "#fff",
-    fontSize: 13,
-    marginTop: 2,
   },
 });

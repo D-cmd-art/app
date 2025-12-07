@@ -11,6 +11,7 @@ import {
   Dimensions,
   Switch,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Formik } from "formik";
@@ -21,7 +22,8 @@ import { useLogin } from "../hooks/useLogin";
 import { jwtDecode } from "jwt-decode";
 import { useUserStore } from "../utils/store/userStore";
 import Icon from "react-native-vector-icons/FontAwesome5";
-import {saveTokens} from "../utils/tokenStorage"
+import { saveTokens } from "../utils/tokenStorage";
+
 const { width } = Dimensions.get("window");
 
 const LoginSchema = Yup.object().shape({
@@ -45,33 +47,34 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { setUser } = useUserStore();
-  const { mutate } = useLogin(); // Removed isLoading from here, we’ll handle manually
+  const { mutate } = useLogin();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ Local state for spinner
+  const [loading, setLoading] = useState(false); // Full-screen loading
 
   const handleLogin = (values, { resetForm }) => {
     const { emailorphone, password } = values;
-    setLoading(true); // 🔄 Start spinner
+
+    setLoading(true); // Show full-screen modal
 
     mutate(
       { emailorphone, password },
       {
-        onSuccess: async(resData) => {
+        onSuccess: async (resData) => {
           const accessToken = resData.accessToken;
-          const refreshToken=resData.refreshToken;
-         await  saveTokens(accessToken,refreshToken)
+          const refreshToken = resData.refreshToken;
+
+          await saveTokens(accessToken, refreshToken);
+
           const user = jwtDecode(accessToken);
           setUser(user);
+
           resetForm();
-          setLoading(false); // ✅ Stop spinner
+          setLoading(false); // Hide modal
         },
         onError: (error) => {
-          const msg =
-            error.response?.data?.error || error.message || "Login failed";
-            console.log(msg);
-          Alert.alert("Login Failed try again");
-          setLoading(false); // ❌ Stop spinner on error
+          Alert.alert("Login Failed", "Try again!");
+          setLoading(false);
         },
       }
     );
@@ -145,16 +148,15 @@ export default function LoginScreen() {
                   )}
                 </View>
 
-                {/* Remember Me & Forgot Password */}
+                {/* Remember Me + Forgot */}
                 <View style={styles.rememberContainer}>
                   <Switch
                     value={values.remember}
                     onValueChange={(val) => setFieldValue("remember", val)}
                   />
                   <Text style={styles.rememberText}>Remember me</Text>
-                  <Pressable
-                    onPress={() => navigation.navigate("Forget")}
-                  >
+
+                  <Pressable onPress={() => navigation.navigate("Forget")}>
                     <Text style={styles.forgotText}>Forgot password?</Text>
                   </Pressable>
                 </View>
@@ -168,20 +170,13 @@ export default function LoginScreen() {
                   ]}
                   disabled={loading}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Login</Text>
-                  )}
+                  <Text style={styles.buttonText}>Login</Text>
                 </Pressable>
 
                 {/* Register */}
                 <Pressable
                   onPress={() => navigation.navigate("Register")}
-                  style={({ pressed }) => [
-                    pressed && { opacity: 0.6 },
-                    { marginTop: 20 },
-                  ]}
+                  style={{ marginTop: 20 }}
                 >
                   <Text style={styles.registerText}>
                     New here?{" "}
@@ -193,9 +188,21 @@ export default function LoginScreen() {
           </Formik>
         </View>
       </ScrollView>
+
+      {/* 🔥 FULL-SCREEN LOADING MODAL (Same as Forgot Page) */}
+      <Modal transparent visible={loading} animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="large" color="#ee1212ff" />
+            <Text style={styles.loadingText}>Logging in...</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+/* ------------------ STYLES ------------------ */
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f0f2f5" },
@@ -216,21 +223,21 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
-    color: "#92400e",
+    color: "#ee1212ff",
     marginBottom: 2,
-
   },
   header1: {
-    fontSize: 22,
-    fontWeight: "600",
-textAlign: "center",
-    color: "#92400e",
+    fontSize: 18,
+    fontWeight: "550",
+    textAlign: "start",
+    marginLeft: "5%",
+    color: "#070505ff",
     marginBottom: 2,
   },
   form: { width: "100%" },
   fieldContainer: { marginBottom: 16 },
   input: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#ecececff",
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -240,12 +247,12 @@ textAlign: "center",
   passwordWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#ecececff",
     borderRadius: 8,
     paddingRight: 10,
   },
   eyeIcon: { paddingHorizontal: 8 },
-  error: { color: "#d9534f", marginTop: 4, fontSize: 12 },
+  error: { color: "#ee1212ff", marginTop: 4, fontSize: 12 },
   rememberContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -255,16 +262,14 @@ textAlign: "center",
   rememberText: { fontSize: 14, color: "#333" },
   forgotText: {
     fontSize: 14,
-    color: "#d6336c",
+    color: "#ee1212ff",
     textDecorationLine: "underline",
   },
   button: {
-    backgroundColor: "#92400e",
+    backgroundColor: "#ee1212ff",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
   },
   buttonPressed: { opacity: 0.8 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
@@ -273,5 +278,25 @@ textAlign: "center",
     color: "#6c757d",
     fontSize: 14,
   },
-  registerLink: { color: "#92400e", fontWeight: "600" },
+  registerLink: { color: "#ee1212ff", fontWeight: "600" },
+
+  /* Full-Screen Loading */
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loaderBox: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1e293b",
+  },
 });

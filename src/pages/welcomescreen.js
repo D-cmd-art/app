@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#92400e',
+    color: '#ee1212ff',
   },
   description: {
     fontSize: 14,
@@ -144,11 +144,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   activeDot: {
-    backgroundColor: '#92400e',
+    backgroundColor: '#ee1212ff',
     width: 16,
   },
   button: {
-    backgroundColor: '#92400e',
+    backgroundColor: '#ee1212ff',
     paddingVertical: 12,
     paddingHorizontal: 40,
     borderRadius: 25,

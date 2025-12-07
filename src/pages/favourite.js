@@ -63,7 +63,7 @@ const Favourite = () => {
             <Text style={styles.emptyTitle}>No Favorites Yet</Text>
             <Text style={styles.emptyText}>
               You haven’t added any favorites yet. Explore products and tap the{" "}
-              <Ionicons name="heart-outline" size={16} color="#92400e" /> icon
+              <Ionicons name="heart-outline" size={16} color="#ee1212ff" /> icon
               to add them here!
             </Text>
            
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: width * 0.055,
     fontWeight: "700",
-    color: "#92400e",
+    color: "#ee1212ff",
     marginLeft: 8,
   },
 
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   exploreButton: {
     marginTop: width * 0.06,
-    backgroundColor: "#92400e",
+    backgroundColor: "#ee1212ff",
     paddingVertical: width * 0.03,
     paddingHorizontal: width * 0.1,
     borderRadius: 25,

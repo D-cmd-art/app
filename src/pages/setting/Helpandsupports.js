@@ -116,10 +116,10 @@ export default HelpAndSupport;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1754fcff', // Primary container color
+    backgroundColor: '#fc0b0bff', // Primary container color
   },
   header: {
-    backgroundColor: '#A62A22',
+    backgroundColor: '#fc0b0bff',
     paddingTop: 15,
     paddingBottom: 16,
     paddingHorizontal: 20,

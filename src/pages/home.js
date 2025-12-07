@@ -31,7 +31,7 @@ const Home = () => {
     <SafeAreaView style={styles.safeArea}>
       <FlatList
         style={styles.flatList}
-        data={[]} // No actual list data; only header content
+        data={[]} // No actual list data ; only header content
         keyExtractor={() => 'dummy'}
         ListHeaderComponent={
           <>
@@ -52,7 +52,8 @@ const Home = () => {
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
-  );
+
+);
 };
 
 export default Home;
@@ -60,7 +61,7 @@ export default Home;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f55e23ff',
+    backgroundColor: '#fc0b0bff',
   },
   flatList: {
     backgroundColor: '#ffffffff',

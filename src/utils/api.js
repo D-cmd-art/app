@@ -5,18 +5,15 @@ import { jwtDecode } from 'jwt-decode';
 import { getTokens, saveTokens, deleteTokens } from '../utils/tokenStorage';
 
 const api = axios.create({
-  baseURL: 'http://bhokexpress.com/api',
+  baseURL: 'http://bhokexpress.com/api', // 👈 confirm this matches your backend
 });
 
-// ✅ Attach access token to requests
+// ✅ Attach access token only if not skipping
 api.interceptors.request.use(async (config) => {
   const tokens = await getTokens();
-  if (tokens?.accessToken) {
-    config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-  }
 
-  if (config._skipAuthInterceptor) {
-    config._skipAuthInterceptor = true;
+  if (tokens?.accessToken && !config._skipAuthInterceptor) {
+    config.headers.Authorization = `Bearer ${tokens.accessToken}`;
   }
 
   return config;
@@ -40,7 +37,6 @@ api.interceptors.response.use(
         const tokens = await getTokens();
         if (!tokens?.refreshToken) throw new Error('No refresh token');
 
-        // ✅ Call mobile-friendly refresh endpoint
         const res = await axios.post(
           'http://bhokexpress.com/api/refresh/mobile',
           { refreshToken: tokens.refreshToken },

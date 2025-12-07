@@ -93,7 +93,7 @@ export default function SearchPage() {
           style={styles.input}
         />
         <TouchableOpacity onPress={handleSearch} style={styles.searchIcon}>
-          <Icon name="search" size={20} color="#92400e" />
+          <Icon name="search" size={20} color="#ee1212ff" />
         </TouchableOpacity>
       </View>
 
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#92400e",
+    color: "#ee1212ff",
   },
   subtitle: {
     fontSize: 14,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     borderColor: "#d1d5db",
   },
   activeTab: {
-    backgroundColor: "#92400e",
+    backgroundColor: "#ee1212ff",
   },
   tabText: {
     fontWeight: "600",
@@ -203,6 +203,6 @@ const styles = StyleSheet.create({
   suggestionItem: {
     paddingVertical: 6,
     fontSize: 16,
-    color: "#92400e",
+    color: "#ee1212ff",
   },
 });

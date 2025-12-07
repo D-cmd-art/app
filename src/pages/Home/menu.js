@@ -51,7 +51,7 @@ const Categories = () => {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>What's on your minds</Text>
+        <Text style={styles.title}>What's on your minds ?</Text>
       </View>
 
       {isLoading ? (

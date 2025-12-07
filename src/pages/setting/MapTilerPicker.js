@@ -181,7 +181,7 @@ const MapPicker = () => {
         // For auto-fetch, fail silently and use default
         setSelectedLocation(defaultLocation);
         sendLocationToWebView(defaultLocation.latitude, defaultLocation.longitude);
-        setCurrentAddress('Damak (Default Location)');
+        setCurrentAddress('Damak');
         setLocationLoading(false);
         setAutoLocationFetched(true);
       } else {
@@ -254,7 +254,7 @@ const MapPicker = () => {
       timestamp: new Date().toISOString(),
     });
     
-    Alert.alert('Success', 'Location saved successfully!');
+  
     navigation.goBack();
   };
 

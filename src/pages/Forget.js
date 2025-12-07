@@ -5,42 +5,64 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { isValidEmail } from '../utils/validation'; // replicate your validation logic
-import { useForgot } from '../hooks/useForget'; // same hook logic
 import Toast from 'react-native-toast-message';
+import { isValidEmail } from '../utils/validation';
+import { useForgot } from '../hooks/useForget';
 
-const { width } = Dimensions.get('window');
+// Prevents "Object is not valid as a React child" crash
+const safeText = (value) =>
+  typeof value === 'string' ? value : JSON.stringify(value || '');
 
 export default function Forgot() {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
-  const [errors, setErrors] = useState({ email: '' });
+  const [error, setError] = useState('');
 
-  const { mutate, isLoading } = useForgot({
-    onSuccess: (resData) => {
-      Toast.show({ type: 'success', text1: resData.message });
+  const { mutate, isPending } = useForgot({
+    onSuccess: (res) => {
+      Toast.show({
+        type: 'success',
+        text1: '✅ Reset Link Sent',
+        text2: safeText(res?.message || 'Check your inbox for reset instructions.'),
+      });
       setEmail('');
     },
-    onError: (error) => {
-      Toast.show({ type: 'error', text1: error?.response?.data?.error || 'Something went wrong' });
+
+    onError: (err) => {
+      const backendMsg = err?.response?.data?.message;
+      const msgLower = typeof backendMsg === 'string' ? backendMsg.toLowerCase() : '';
+
+      let title = '⚠️ Error';
+      let desc = 'Please try again later.';
+
+      if (msgLower.includes('not found')) {
+        title = '❌ Email Not Found';
+        desc = 'We couldn’t find an account with that email.';
+      } else if (backendMsg) {
+        desc = safeText(backendMsg);
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: title,
+        text2: safeText(desc),
+      });
     },
   });
 
   const handleForgot = () => {
-    let newErrors = {};
     if (!isValidEmail(email)) {
-      newErrors.email = 'A valid email is required.';
-      setErrors(newErrors);
+      setError('A valid email is required.');
+      return;
     }
-    if (Object.keys(newErrors).length === 0) {
-      mutate({ email });
-    }
+    setError('');
+    mutate({ email });
   };
 
   return (
@@ -57,45 +79,58 @@ export default function Forgot() {
           Enter your email and we'll send you a reset link
         </Text>
 
+        {/* Email Input */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email Address</Text>
+
           <TextInput
             style={styles.input}
             placeholder="Enter your email"
-            value={email}
-            onChangeText={(text) => setEmail(text)}
             keyboardType="email-address"
             autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
           />
-          {errors.email ? <Text style={styles.error}>{errors.email}</Text> : null}
+
+          {!!error && <Text style={styles.error}>{error}</Text>}
         </View>
 
+        {/* Submit Button */}
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, isPending && { opacity: 0.7 }]}
           onPress={handleForgot}
-          disabled={isLoading}
+          disabled={isPending}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Send Reset Link</Text>
-          )}
+          <Text style={styles.buttonText}>Send Reset Link</Text>
         </TouchableOpacity>
 
+        {/* Login Link */}
         <Text style={styles.footerText}>
           Remembered your password?{' '}
-          <Text
-            style={styles.link}
-            onPress={() => navigation.navigate('Login')}
-          >
+          <Text style={styles.link} onPress={() => navigation.navigate('Login')}>
             Login here
           </Text>
         </Text>
       </View>
+
+      {/* Loading Modal */}
+      <Modal transparent visible={isPending} animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="large" color="#ee1212ff" />
+            <Text style={styles.loadingText}>Processing your request...</Text>
+          </View>
+        </View>
+      </Modal>
+
       <Toast />
     </KeyboardAvoidingView>
   );
 }
+
+/* ----------------------------------
+            STYLES
+---------------------------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -116,7 +151,7 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#A62A22',
+    color: '#ee1212ff',
     textAlign: 'center',
   },
   subtitle: {
@@ -155,12 +190,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   error: {
-    color: '#ef4444',
+    color: '#ee1212ff',
     fontSize: 12,
     marginTop: 4,
   },
   button: {
-    backgroundColor: '#A62A22',
+    backgroundColor: '#ee1212ff',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -178,8 +213,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   link: {
-    color: '#A62A22',
+    color: '#ee1212ff',
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderBox: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
   },
 });

@@ -3,52 +3,50 @@ import {
   View,
   Text,
   Image,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   FlatList,
-  StatusBar,
   Modal,
   ActivityIndicator,
   ScrollView,
   BackHandler,
+  StatusBar,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+
 import { useRestaurantProducts } from "../../hooks/useRestaurantList";
 import ProductCard from "../components/ProductCard";
+import { useCartStore } from "../../utils/store/cartStore";
 
 const RestaurantFood = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { restaurantName } = route.params;
+  const { restaurantId } = route.params;
 
-  const { data, isLoading, error } = useRestaurantProducts(restaurantName);
-
+  const { data, isLoading, error } = useRestaurantProducts(restaurantId);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // ✅ Automatically adapt columns to screen width
-  const { width } = useWindowDimensions();
-  const numColumns = width < 400 ? 1 : 2; // 1 for small screens, 2 for larger ones
+  const addToCart = useCartStore((state) => state.addItem);
+  const itemsInCart = useCartStore((state) => state.items);
 
-  // ✅ Handle Android hardware back button
+  const { width } = useWindowDimensions();
+  const numColumns = width < 400 ? 1 : 2;
+
+  // Handle Android back button
   useEffect(() => {
     const backAction = () => {
       navigation.goBack();
       return true;
     };
+    const bh = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => bh.remove();
+  }, []);
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
-    return () => backHandler.remove();
-  }, [navigation]);
-
-  // ✅ Loading & Error handling
   if (isLoading)
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -59,36 +57,39 @@ const RestaurantFood = () => {
   if (error)
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <Text style={{ color: "red" }}>Error: {error.message}</Text>
+        <Text style={{ color: "red" }}>Error loading restaurant data</Text>
       </SafeAreaView>
     );
 
-  // ✅ Extract categories & subcategories
-  const categories = Array.from(new Set(data?.products?.map((p) => p.category)));
-  const subCategories = Array.from(
-    new Set(
-      data?.products
-        ?.filter((p) => p.category === selectedCategory)
-        .map((p) => p.subCategory)
-    )
-  );
+  const restaurant = data?.restaurant;
+  const products = data?.products || [];
 
-  const filteredProducts = data?.products?.filter((p) => {
-    return (
+  const categories = [...new Set(products.map((p) => p.category))];
+  const subCategories = [
+    ...new Set(
+      products
+        .filter((p) => p.category === selectedCategory)
+        .map((p) => p.subCategory)
+    ),
+  ];
+
+  const filteredProducts = products.filter(
+    (p) =>
       (!selectedCategory || p.category === selectedCategory) &&
       (!selectedSubCategory || p.subCategory === selectedSubCategory)
-    );
-  });
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
-        <RestaurantHeader restaurant={data?.restaurants?.[0]} />
+        {/* Restaurant Header */}
+        <RestaurantHeader restaurant={restaurant} />
 
         {/* Category Tabs */}
         <View style={styles.tabsContainer}>
@@ -131,7 +132,6 @@ const RestaurantFood = () => {
               <Ionicons name="chevron-down" size={18} color="#666" />
             </TouchableOpacity>
 
-            {/* Modal */}
             <Modal
               transparent
               animationType="slide"
@@ -177,33 +177,27 @@ const RestaurantFood = () => {
           </View>
         )}
 
-        {/* ✅ Product Grid - Safe & Responsive */}
+        {/* Products Grid */}
         <View style={styles.productsGrid}>
-          {filteredProducts?.length > 0 ? (
+          {filteredProducts.length > 0 ? (
             <FlatList
               data={filteredProducts}
-              key={numColumns} // Force re-render on layout change
+              key={numColumns}
               keyExtractor={(item) => item._id}
               numColumns={numColumns}
               scrollEnabled={false}
-              // ✅ Only include columnWrapperStyle if numColumns > 1
               {...(numColumns > 1 ? { columnWrapperStyle: styles.row } : {})}
-              contentContainerStyle={{
-                justifyContent:
-                  numColumns === 1 ? "center" : "space-between",
-                paddingBottom: 20,
-              }}
               renderItem={({ item }) => (
                 <View
                   style={[
                     styles.productWrapper,
-                    numColumns === 1 && {
-                      width: "90%",
-                      alignSelf: "center",
-                    },
+                    numColumns === 1 && { width: "90%", alignSelf: "center" },
                   ]}
                 >
-                  <ProductCard item={item} />
+                  <ProductCard
+                    item={item}
+                    onAddToCart={() => addToCart(item)}
+                  />
                 </View>
               )}
             />
@@ -212,23 +206,24 @@ const RestaurantFood = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* 🔥 Bottom Floating Cart Bar */}
+      <BottomCartBar navigation={navigation} items={itemsInCart} />
     </SafeAreaView>
   );
 };
 
-/* -------------------- HEADER -------------------- */
+/* ---------------- RESTAURANT HEADER ---------------- */
 const RestaurantHeader = ({ restaurant }) => {
   const navigation = useNavigation();
   if (!restaurant) return null;
 
+  const isOpen = checkOpenStatus(restaurant.time);
+
   return (
     <View style={styles.headerCard}>
       <Image
-        source={{
-          uri:
-            restaurant.photos?.[0] ||
-            "https://images.unsplash.com/photo-1600891964599-f61ba0e24092",
-        }}
+        source={{ uri: restaurant.photos?.[0] }}
         style={styles.headerImage}
       />
 
@@ -239,33 +234,20 @@ const RestaurantHeader = ({ restaurant }) => {
         >
           <Ionicons name="chevron-back" size={22} color="#2e0909ff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="ellipsis-horizontal" size={22} color="#000" />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.headerInfo}>
         <Text style={styles.headerTitle}>{restaurant.name}</Text>
-        <Text style={styles.headerDescription}>
-          {restaurant.description || "Delicious food served fresh!"}
+        <Text style={styles.headerDescription}>{restaurant.description}</Text>
+        <Text style={isOpen ? styles.open : styles.closed}>
+          {isOpen ? "Open Now" : "Closed"}
         </Text>
 
         <View style={styles.headerStats}>
           <View style={styles.statItem}>
             <Ionicons name="star" color="#f59e0b" size={16} />
             <Text style={styles.statText}>
-              {restaurant.rating?.average || 4.7}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="cash-outline" color="#16a34a" size={16} />
-            <Text style={styles.statText}>Free</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="time-outline" color="#ef4444" size={16} />
-            <Text style={styles.statText}>
-              {restaurant.deliveryTime?.min || 15}–
-              {restaurant.deliveryTime?.max || 25} min
+              {restaurant.rating?.average || "N/A"}
             </Text>
           </View>
         </View>
@@ -274,19 +256,57 @@ const RestaurantHeader = ({ restaurant }) => {
   );
 };
 
-/* -------------------- STYLES -------------------- */
+/* ---------------- BOTTOM CART BAR ---------------- */
+const BottomCartBar = ({ navigation, items }) => {
+  if (!items || items.length === 0) return null;
+
+  const totalQuantity = items.reduce((a, b) => a + b.quantity, 0);
+  const totalPrice = items.reduce((a, b) => a + b.quantity * b.price, 0);
+
+  return (
+    <View style={styles.bottomCartBar}>
+      <View>
+        <Text style={styles.cartBottomText}>{totalQuantity} items</Text>
+        <Text style={styles.cartBottomText}>Total: Rs. {totalPrice}</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.cartBottomBtn}
+        onPress={() => navigation.navigate("Addtocart")}
+      >
+        <Text style={styles.cartBottomBtnText}>View Cart</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+/* ---------------- HELPER ---------------- */
+function checkOpenStatus(time) {
+  if (!time) return false;
+
+  const now = new Date();
+  const current = now.getHours() * 60 + now.getMinutes();
+
+  const [openH, openM] = time.open.split(":").map(Number);
+  const [closeH, closeM] = time.closed.split(":").map(Number);
+
+  const openMin = openH * 60 + openM;
+  const closeMin = closeH * 60 + closeM;
+
+  return current >= openMin && current <= closeMin;
+}
+
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  /* Header */
   headerCard: { position: "relative" },
   headerImage: {
     width: "100%",
     height: 220,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+   
   },
   headerOverlay: {
     position: "absolute",
@@ -298,77 +318,75 @@ const styles = StyleSheet.create({
   },
   backButton: {
     backgroundColor: "rgba(255,255,255,0.4)",
-    borderRadius: 20,
     padding: 6,
-  },
-  menuButton: {
-    backgroundColor: "rgba(255,255,255,0.4)",
     borderRadius: 20,
-    padding: 6,
   },
   headerInfo: { marginTop: 10, paddingHorizontal: 16 },
   headerTitle: { fontSize: 22, fontWeight: "700", color: "#3a3c41ff" },
-  headerDescription: { fontSize: 14, color: "#252629ff", marginVertical: 6 },
-  headerStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-    gap: 20,
-    justifyContent: "center",
-  },
+  headerDescription: { color: "#4b5563", marginBottom: 6 },
+  open: { color: "green", fontWeight: "700", marginTop: 4 },
+  closed: { color: "red", fontWeight: "700", marginTop: 4 },
+  headerStats: { flexDirection: "row", marginTop: 4, gap: 20, justifyContent: "center" },
   statItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statText: { color: "#05080eff", fontWeight: "500" },
+  statText: { color: "#000", fontWeight: "500" },
 
-  /* Category Tabs */
   tabsContainer: { marginTop: 16, paddingHorizontal: 16 },
   tabButton: {
-    backgroundColor: "#c4c0bfff",
+    backgroundColor: "#ddd",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
   },
   tabActive: { backgroundColor: "#92400e" },
-  tabText: { color: "#111827", fontWeight: "500" },
+  tabText: { color: "#111" },
   tabTextActive: { color: "#fff" },
 
-  /* Subcategory Dropdown */
   subcategoryContainer: { paddingHorizontal: 16, marginTop: 12 },
   dropdownTrigger: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    padding: 12,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#ddd",
     borderRadius: 10,
-    padding: 12,
-    backgroundColor: "#fafafa",
   },
-  dropdownText: { fontSize: 15, color: "#374151", fontWeight: "500" },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: { backgroundColor: "#fff", borderRadius: 12, padding: 20, width: "80%" },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
-  modalOption: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#ddd" },
-  modalOptionText: { fontSize: 16, color: "#333", textAlign: "center" },
-  modalClose: {
-    backgroundColor: "#92400e",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    alignItems: "center",
-  },
-  modalCloseText: { color: "#fff", fontWeight: "600" },
+  dropdownText: { fontSize: 15 },
+  modalOverlay: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+  modalContent: { backgroundColor: "#fff", marginHorizontal: 40, padding: 20, borderRadius: 10 },
+  modalTitle: { textAlign: "center", fontSize: 18, fontWeight: "700" },
+  modalOption: { paddingVertical: 12 },
+  modalOptionText: { textAlign: "center", fontSize: 16 },
+  modalClose: { backgroundColor: "#92400e", padding: 12, borderRadius: 10 },
+  modalCloseText: { color: "#fff", textAlign: "center" },
 
-  /* Product Grid */
   productsGrid: { paddingHorizontal: 16, marginTop: 16 },
   row: { justifyContent: "space-between", marginBottom: 16 },
-  productWrapper: { flex: 1, marginHorizontal: 4 },
-  noProducts: { textAlign: "center", color: "#6b7280", marginTop: 20 },
+  productWrapper: { flex: 1 },
+  noProducts: { textAlign: "center", marginTop: 20 },
+
+  bottomCartBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  cartBottomText: { fontSize: 15, fontWeight: "600", color: "#333" },
+  cartBottomBtn: { backgroundColor: "#ee1212ff", paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 },
+  cartBottomBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });
 
 export default RestaurantFood;

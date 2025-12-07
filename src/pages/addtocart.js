@@ -40,7 +40,7 @@ const Addtocart = () => {
             <Text style={styles.qtyText}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => removeItem(item._id)} style={styles.trashBtn}>
-            <Ionicons name="trash-outline" size={22} color="#FF4D4D" />
+            <Ionicons name="trash-outline" size={22} color="#ee1212ff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -72,7 +72,7 @@ const Addtocart = () => {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryText}>Discount</Text>
-              <Text style={[styles.summaryText, { color: "#e4040448" }]}>- Rs. {discount.toFixed(2)}</Text>
+              <Text style={[styles.summaryText, { color: "#ee1212ff" }]}>- Rs. {discount.toFixed(2)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryText, styles.finalTotal]}> Total</Text>
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     marginTop: 10,
-    backgroundColor: "#28A745",
+    backgroundColor: "#ee1212ff",
     paddingVertical: 14,
    paddingBottom: 20,
     borderRadius: 10,

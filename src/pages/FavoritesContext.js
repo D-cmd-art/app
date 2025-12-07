@@ -16,7 +16,7 @@ export const FavoritesProvider = ({ children }) => {
       setFavoriteItems((prevItems) => [...prevItems, item]);
       return true; // Added successfully
     }
-    return false; // Already exists
+    return false; // Already exi
   };
 
   // Function to remove an item from favorites
