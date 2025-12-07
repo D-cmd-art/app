@@ -140,7 +140,7 @@ export default function ConfirmOrder() {
       return null;
     }
 
-    return {
+    const payload = {
       user: {
         id: user.id,
         name: user.name,
@@ -163,6 +163,9 @@ export default function ConfirmOrder() {
       payment_method: paymentMethod,
       ...(paymentMethod === 'QRPAY' && { transactionId: txnId, note }),
     };
+
+    console.log('📦 Order Payload:', JSON.stringify(payload, null, 2));
+    return payload;
   };
 
   const handleConfirm = async () => {
