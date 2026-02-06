@@ -23,7 +23,7 @@ export function useFavourites(options) {
          queryKey:["favourites",userId],
          queryFn:()=>fetchFavouriteList(userId),
          refetchInterval:10000,
-         refetchIntervalInBackground:true,
+         refetchIntervalInBackground:false,
          staleTime:0,
          enabled: !!userId,
       })
@@ -40,7 +40,7 @@ export function useFavourites(options) {
          queryKey:["favouritesAll",userId],
          queryFn:()=>fetchFavouriteListAll(userId),
          refetchInterval:100,
-         refetchIntervalInBackground:true,
+         refetchIntervalInBackground:false,
          staleTime:0,
          enabled: !!userId,
       })

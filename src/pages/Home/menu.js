@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: deviceWidth * 0.045,
     fontWeight: 'bold',
-  color: "#92400e",
+  color: "#e91313ff",
   },
   scrollContainer: {
     flexDirection: 'row',
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     height: deviceWidth * 0.18,
     borderRadius: deviceWidth * 0.09,
     borderWidth: 2,
-    borderColor: '#15c415ff',
+    borderColor: 'rgba(102, 240, 89, 0)',
     marginBottom: 6,
   },
   name: {

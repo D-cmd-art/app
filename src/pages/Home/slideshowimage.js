@@ -15,7 +15,7 @@ const Slideshow = () => {
 
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % photos.length);
-    }, 3000);
+    }, 8000);
 
     return () => clearInterval(interval);
   }, [photos]);
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: width * 0.9,
-    height: 180,
+    height: 190,
     borderRadius: 15,
     overflow: 'hidden',
     position: 'relative',

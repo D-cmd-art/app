@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,19 +20,22 @@ const slides = [
   {
     id: '1',
     title: 'Search your Food',
-    description: 'Search your desired food to order',
+    description:
+      'Select your location and order your food from favourite restaurants',
     image: require('../assets/foodsearching.png'),
   },
   {
     id: '2',
-    title: 'Order your Food',
-    description: 'Order Your Favourite and delicious foods on one click',
+    title: 'Select your location',
+    description:
+      'Discover your order from the nearby restaurant by selecting location',
     image: require('../assets/Order.png'),
   },
   {
     id: '3',
     title: 'Enjoy Our Fast Delivery Services',
-    description: 'Get your order delivered at your doorstep quickly and safely.',
+    description:
+      'Get your order delivered at your current location quickly and safely.',
     image: require('../assets/delivery.png'),
   },
 ];
@@ -40,13 +45,23 @@ export default function Welcome() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef();
 
+  // modal state
+  const [showDisclosure, setShowDisclosure] = useState(false);
+
   const handleNext = async () => {
     if (currentIndex < slides.length - 1) {
       flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      await AsyncStorage.setItem('hasSeenWelcome', 'true');
-      navigation.navigate('Login');
+      // show location disclosure modal instead of direct navigation
+      setShowDisclosure(true);
     }
+  };
+
+  const handleAgree = async () => {
+    await AsyncStorage.setItem('hasSeenWelcome', 'true');
+    await AsyncStorage.setItem('location_disclosure_accepted', 'true');
+    setShowDisclosure(false);
+    navigation.navigate('Login');
   };
 
   const onViewRef = useRef(({ viewableItems }) => {
@@ -56,7 +71,7 @@ export default function Welcome() {
   });
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}>
       <FlatList
         data={slides}
         ref={flatListRef}
@@ -77,7 +92,10 @@ export default function Welcome() {
                 {slides.map((_, index) => (
                   <View
                     key={index}
-                    style={[styles.dot, currentIndex === index && styles.activeDot]}
+                    style={[
+                      styles.dot,
+                      currentIndex === index && styles.activeDot,
+                    ]}
                   />
                 ))}
               </View>
@@ -90,6 +108,30 @@ export default function Welcome() {
           </View>
         )}
       />
+
+      {/* ------------------- LOCATION DISCLOSURE MODAL ------------------- */}
+      <Modal
+        visible={showDisclosure}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Location Permission Required</Text>
+            <Text style={styles.modalText}>
+              Bhok Express collects location data to enable live order tracking
+              and delivery services, even when the app is closed or not in use.
+            </Text>
+            <Text style={styles.modalText}>
+              Location data is used only for delivery purposes and is not shared
+              with third parties.
+            </Text>
+            <Pressable style={styles.modalButton} onPress={handleAgree}>
+              <Text style={styles.modalButtonText}>Agree & Continue</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -157,6 +199,47 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+    textAlign: 'center',
+  },
+  /* ------------------- Modal styles ------------------- */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#ee1212ff',
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButton: {
+    marginTop: 20,
+    backgroundColor: '#ee1212ff',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
 });

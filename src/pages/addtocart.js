@@ -29,6 +29,7 @@ const Addtocart = () => {
       <Image source={{ uri: item.photos?.[0] }} style={styles.image} />
       <View style={styles.details}>
         <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.resturantname}>{item.restaurant?.name}</Text>
        
         <Text style={styles.price}>Rs. {item.price.toFixed(2)}</Text>
         <View style={styles.controls}>
@@ -98,6 +99,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f7f1f1ff",
     paddingHorizontal: 15,
+  },
+  resturantname:{
+    fontSize:15,
+    color:"#1f1f1fff"
   },
   title: {
     fontSize: 24,
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: width * 0.12,
+    paddingBottom: width * 0.14,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: -2 },

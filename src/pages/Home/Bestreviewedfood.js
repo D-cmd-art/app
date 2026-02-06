@@ -62,7 +62,7 @@ const BestReviewedFood = () => {
       const nextIndex = (currentIndex + 1) % products.length;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setCurrentIndex(nextIndex);
-    }, 4000);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, [currentIndex, products.length, userTouched]);

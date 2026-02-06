@@ -29,14 +29,17 @@ const Order = () => {
         navigation.goBack();
         return true;
       }
-      return false;
+      
     };
 
+
+  
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [navigation]);
 
   const renderOrder = ({ item }) => {
+    console.log('ORDER ITEM:', item);
     // Override paymentStatus to 'paid' if order is completed
     const displayPaymentStatus =
       item.subStatus?.toLowerCase() === 'completed' ? 'paid' : item.paymentStatus || 'unpaid';
@@ -85,6 +88,7 @@ const Order = () => {
                 <Text style={styles.foodName} numberOfLines={1}>
                   {product.name}
                 </Text>
+              
                 <Text style={styles.foodDetails}>
                   Qty: {product.quantity} | Total: NPR {product.price?.toFixed(2)}
                 </Text>

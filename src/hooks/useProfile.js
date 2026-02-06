@@ -5,6 +5,7 @@ export function useDeleteUser(options) {
   return useMutation({
     mutationFn: async (id) => {
       const res = await api.post('/auth/user/delete', { id });
+      
       return res.data;
     },
     ...options

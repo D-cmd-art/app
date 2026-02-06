@@ -203,7 +203,7 @@ const MapPicker = () => {
         errorMessage += 'Location permission was denied.';
         break;
       case error.POSITION_UNAVAILABLE:
-        errorMessage += 'Location information is unavailable.';
+        errorMessage += 'Please enable your Location .';
         break;
       case error.TIMEOUT:
         errorMessage += 'Location request timed out.';
@@ -285,7 +285,7 @@ const MapPicker = () => {
         width: 100%; 
       }
       .location-marker { 
-        background: #2f9e44; 
+        background: #638f17; 
         border-radius: 50%; 
         width: 20px; 
         height: 20px; 
@@ -307,7 +307,7 @@ const MapPicker = () => {
       }
       .loading-text {
         margin-top: 10px;
-        color: #666;
+        color: #2f2e2e;
         font-family: system-ui;
       }
     </style>
@@ -459,12 +459,12 @@ const MapPicker = () => {
       </View>
 
       <View style={styles.addressBar}>
-        <Icon name="map-pin" size={16} color="#A62A32" />
+        <Icon name="map-pin" size={16} color="#e91313ff" />
         <Text style={styles.addressText} numberOfLines={2}>
           {currentAddress}
         </Text>
         {(isGettingAddress || locationLoading) && (
-          <ActivityIndicator size="small" color="#A62A32" style={styles.loadingIndicator} />
+          <ActivityIndicator size="small" color="#e91313ff" style={styles.loadingIndicator} />
         )}
       </View>
 
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     color: '#333' 
   },
   saveBtn: { 
-    backgroundColor: '#A62A32', 
+    backgroundColor: '#e91313ff', 
     paddingHorizontal: 16, 
     paddingVertical: 8, 
     borderRadius: 6 
@@ -567,10 +567,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#A32A32',
+    borderColor: '#e91313ff',
   },
   refreshButtonText: {
-    color: '#A62A32',
+    color: '#e91313ff',
     fontWeight: '600',
     fontSize: 14,
     marginLeft: 8,

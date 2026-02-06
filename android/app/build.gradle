@@ -20,8 +20,8 @@ android {
         applicationId "com.bhokexpress"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.2"
+        versionCode 8
+        versionName "1.7"
     }
 
     signingConfigs {

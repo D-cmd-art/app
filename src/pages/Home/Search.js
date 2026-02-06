@@ -15,11 +15,9 @@ const LiveSuggestions = ({ type, query, onSelect }) => (
   <View style={styles.suggestionContainer}>
     <Text style={styles.suggestionTitle}>Suggestions for "{query}"</Text>
     <TouchableOpacity onPress={() => onSelect({ name: query + " 1" })}>
-      <Text style={styles.suggestionItem}>{query} 1</Text>
+      <Text style={styles.suggestionItem}>{query} </Text>
     </TouchableOpacity>
-    <TouchableOpacity onPress={() => onSelect({ name: query + " 2" })}>
-      <Text style={styles.suggestionItem}>{query} 2</Text>
-    </TouchableOpacity>
+   
   </View>
 );
 

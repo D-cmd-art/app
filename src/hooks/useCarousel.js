@@ -10,9 +10,15 @@ export function useCarouselList() {
   return useQuery({
     queryKey: ['carousel'],
     queryFn: fetchCategories,
-    refetchInterval: 10000, // Poll every 10 seconds
-    refetchIntervalInBackground: true,
-    staleTime: 0,
-    enabled:true
+ // ✅ cache data
+    staleTime: 1000 * 60 * 5, // 5 minutes
+
+    // ✅ keep in memory
+    cacheTime: 1000 * 60 * 30, // 30 minutes
+
+    // ✅ refetch only on real events
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }

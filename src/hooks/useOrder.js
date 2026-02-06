@@ -21,11 +21,16 @@ async function fetchOrderList(){
   return useQuery({
     queryKey: ['orders'],
     queryFn: () => fetchOrderList(),
-    refetchInterval: 10000, 
-    refetchIntervalInBackground: true, 
-    staleTime: 0,
-    refetchOnWindowFocus: true, 
-    enabled: true,
+  // ✅ cache data
+    staleTime: 1000 * 60 * 5, // 5 minutes
+
+    // ✅ keep in memory
+    cacheTime: 1000 * 60 * 30, // 30 minutes
+
+    // ✅ refetch only on real events
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }
 

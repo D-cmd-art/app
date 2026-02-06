@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   FlatList,
   Modal,
   ActivityIndicator,
-  ScrollView,
   BackHandler,
   StatusBar,
   useWindowDimensions,
@@ -18,46 +17,53 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import { useRestaurantProducts } from "../../hooks/useRestaurantList";
-import ProductCard from "../components/ProductCard";
+import ResturantProductCard from "../components/resturantProduct";
 import { useCartStore } from "../../utils/store/cartStore";
 
-const RestaurantFood = () => {
+export default function RestaurantFood() {
   const navigation = useNavigation();
-  const route = useRoute();
-  const { restaurantId } = route.params;
+  const { restaurantId } = useRoute().params;
 
   const { data, isLoading, error } = useRestaurantProducts(restaurantId);
+  const addToCart = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items);
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const addToCart = useCartStore((state) => state.addItem);
-  const itemsInCart = useCartStore((state) => state.items);
-
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const numColumns = width < 400 ? 1 : 2;
 
-  // Handle Android back button
+  const flatListRef = useRef(null);
+
+  // Scroll to top when category/subcategory changes
   useEffect(() => {
-    const backAction = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [selectedCategory, selectedSubCategory]);
+
+  // Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
       navigation.goBack();
       return true;
-    };
-    const bh = BackHandler.addEventListener("hardwareBackPress", backAction);
-    return () => bh.remove();
+    });
+    return () => backHandler.remove();
   }, []);
 
   if (isLoading)
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#92400e" />
+      <SafeAreaView style={styles.center}>
+        <ActivityIndicator size="large" color="#e11d48" />
       </SafeAreaView>
     );
 
   if (error)
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <Text style={{ color: "red" }}>Error loading restaurant data</Text>
+      <SafeAreaView style={styles.center}>
+        <Text style={{ color: "red" }}>Failed to load data</Text>
       </SafeAreaView>
     );
 
@@ -83,310 +89,237 @@ const RestaurantFood = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Restaurant Header */}
-        <RestaurantHeader restaurant={restaurant} />
+      {/* ===== FIXED HEADER + CATEGORY ===== */}
+      <View>
+        <RestaurantHeader restaurant={restaurant} width={width} />
 
-        {/* Category Tabs */}
-        <View style={styles.tabsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
+        {/* Categories */}
+        <FlatList
+          data={categories}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.tabsContainer}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                selectedCategory === item && styles.tabActive,
+              ]}
+              onPress={() => {
+                setSelectedCategory(item);
+                setSelectedSubCategory(null);
+              }}
+            >
+              <Text
                 style={[
-                  styles.tabButton,
-                  selectedCategory === cat && styles.tabActive,
+                  styles.tabText,
+                  selectedCategory === item && styles.tabTextActive,
                 ]}
-                onPress={() => {
-                  setSelectedCategory(cat);
-                  setSelectedSubCategory(null);
-                }}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    selectedCategory === cat && styles.tabTextActive,
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
 
-        {/* Subcategory Dropdown */}
+        {/* Subcategory */}
         {selectedCategory && (
           <View style={styles.subcategoryContainer}>
             <TouchableOpacity
-              style={styles.dropdownTrigger}
+              style={styles.dropdown}
               onPress={() => setModalVisible(true)}
             >
-              <Text style={styles.dropdownText}>
-                {selectedSubCategory || "All Subcategories"}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color="#666" />
+              <Text>{selectedSubCategory || "All Subcategories"}</Text>
+              <Ionicons name="chevron-down" size={18} />
             </TouchableOpacity>
-
-            <Modal
-              transparent
-              animationType="slide"
-              visible={modalVisible}
-              onRequestClose={() => setModalVisible(false)}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Subcategory</Text>
-
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={() => {
-                      setSelectedSubCategory(null);
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.modalOptionText}>All</Text>
-                  </TouchableOpacity>
-
-                  {subCategories.map((sub) => (
-                    <TouchableOpacity
-                      key={sub}
-                      style={styles.modalOption}
-                      onPress={() => {
-                        setSelectedSubCategory(sub);
-                        setModalVisible(false);
-                      }}
-                    >
-                      <Text style={styles.modalOptionText}>{sub}</Text>
-                    </TouchableOpacity>
-                  ))}
-
-                  <TouchableOpacity
-                    style={styles.modalClose}
-                    onPress={() => setModalVisible(false)}
-                  >
-                    <Text style={styles.modalCloseText}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
           </View>
         )}
+      </View>
 
-        {/* Products Grid */}
-        <View style={styles.productsGrid}>
-          {filteredProducts.length > 0 ? (
-            <FlatList
-              data={filteredProducts}
-              key={numColumns}
-              keyExtractor={(item) => item._id}
-              numColumns={numColumns}
-              scrollEnabled={false}
-              {...(numColumns > 1 ? { columnWrapperStyle: styles.row } : {})}
-              renderItem={({ item }) => (
-                <View
-                  style={[
-                    styles.productWrapper,
-                    numColumns === 1 && { width: "90%", alignSelf: "center" },
-                  ]}
-                >
-                  <ProductCard
-                    item={item}
-                    onAddToCart={() => addToCart(item)}
-                  />
-                </View>
-              )}
+      {/* ===== PRODUCTS LIST ONLY SCROLLABLE ===== */}
+      <FlatList
+        ref={flatListRef}
+        data={filteredProducts}
+        key={numColumns}
+        numColumns={numColumns}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: height * 0.2 },
+        ]}
+        columnWrapperStyle={numColumns > 1 && styles.row}
+        showsVerticalScrollIndicator={true}
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.productWrapper,
+              numColumns === 1 && { width: "90%", alignSelf: "center" },
+            ]}
+          >
+            <ResturantProductCard
+              item={item}
+              onAddToCart={() => addToCart(item)}
             />
-          ) : (
-            <Text style={styles.noProducts}>No products found.</Text>
-          )}
-        </View>
-      </ScrollView>
+          </View>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No products found</Text>
+        }
+      />
 
-      {/* 🔥 Bottom Floating Cart Bar */}
-      <BottomCartBar navigation={navigation} items={itemsInCart} />
+      {/* Subcategory Modal */}
+      <Modal transparent visible={modalVisible} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Select Subcategory</Text>
+
+            <TouchableOpacity
+              style={styles.modalItem}
+              onPress={() => {
+                setSelectedSubCategory(null);
+                setModalVisible(false);
+              }}
+            >
+              <Text>All</Text>
+            </TouchableOpacity>
+
+            {subCategories.map((sub) => (
+              <TouchableOpacity
+                key={sub}
+                style={styles.modalItem}
+                onPress={() => {
+                  setSelectedSubCategory(sub);
+                  setModalVisible(false);
+                }}
+              >
+                <Text>{sub}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      <BottomCartBar navigation={navigation} items={cartItems} />
     </SafeAreaView>
   );
-};
+}
 
-/* ---------------- RESTAURANT HEADER ---------------- */
-const RestaurantHeader = ({ restaurant }) => {
+/* ======================= HEADER ======================= */
+const RestaurantHeader = ({ restaurant, width }) => {
   const navigation = useNavigation();
   if (!restaurant) return null;
 
-  const isOpen = checkOpenStatus(restaurant.time);
-
   return (
-    <View style={styles.headerCard}>
+    <View>
       <Image
         source={{ uri: restaurant.photos?.[0] }}
-        style={styles.headerImage}
+        style={{ width, height: width * 0.5 }} // responsive height
       />
 
-      <View style={styles.headerOverlay}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={22} color="#2e0909ff" />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="chevron-back" size={22} />
+      </TouchableOpacity>
 
-      <View style={styles.headerInfo}>
-        <Text style={styles.headerTitle}>{restaurant.name}</Text>
-        <Text style={styles.headerDescription}>{restaurant.description}</Text>
-        <Text style={isOpen ? styles.open : styles.closed}>
-          {isOpen ? "Open Now" : "Closed"}
-        </Text>
-
-        <View style={styles.headerStats}>
-          <View style={styles.statItem}>
-            <Ionicons name="star" color="#f59e0b" size={16} />
-            <Text style={styles.statText}>
-              {restaurant.rating?.average || "N/A"}
-            </Text>
-          </View>
-        </View>
+      <View style={[styles.headerInfo, { paddingHorizontal: width * 0.03 }]}>
+        <Text style={styles.title}>{restaurant.name}</Text>
+        <Text style={styles.desc}>{restaurant.description}</Text>
       </View>
     </View>
   );
 };
 
-/* ---------------- BOTTOM CART BAR ---------------- */
+/* ======================= CART BAR ======================= */
 const BottomCartBar = ({ navigation, items }) => {
-  if (!items || items.length === 0) return null;
+  if (!items.length) return null;
 
-  const totalQuantity = items.reduce((a, b) => a + b.quantity, 0);
-  const totalPrice = items.reduce((a, b) => a + b.quantity * b.price, 0);
+  const qty = items.reduce((a, b) => a + b.quantity, 0);
+  const price = items.reduce((a, b) => a + b.quantity * b.price, 0);
 
   return (
-    <View style={styles.bottomCartBar}>
-      <View>
-        <Text style={styles.cartBottomText}>{totalQuantity} items</Text>
-        <Text style={styles.cartBottomText}>Total: Rs. {totalPrice}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.cartBottomBtn}
-        onPress={() => navigation.navigate("Addtocart")}
-      >
-        <Text style={styles.cartBottomBtnText}>View Cart</Text>
+    <View style={styles.cartBar}>
+      <Text>{qty} items • Rs. {price}</Text>
+      <TouchableOpacity onPress={() => navigation.navigate("Addtocart")}>
+        <Text style={styles.cartBtn}>View Cart</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-/* ---------------- HELPER ---------------- */
-function checkOpenStatus(time) {
-  if (!time) return false;
-
-  const now = new Date();
-  const current = now.getHours() * 60 + now.getMinutes();
-
-  const [openH, openM] = time.open.split(":").map(Number);
-  const [closeH, closeM] = time.closed.split(":").map(Number);
-
-  const openMin = openH * 60 + openM;
-  const closeMin = closeH * 60 + closeM;
-
-  return current >= openMin && current <= closeMin;
-}
-
-/* ---------------- STYLES ---------------- */
+/* ======================= STYLES ======================= */
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1 },
-  centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  safeArea: { flex: 1, backgroundColor: "#fff",padding:4 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  headerCard: { position: "relative" },
-  headerImage: {
-    width: "100%",
-    height: 220,
-   
-  },
-  headerOverlay: {
+  listContent: { paddingHorizontal: "3%" },
+  row: { justifyContent: "space-between" },
+
+  backBtn: {
     position: "absolute",
-    top: 40,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    backgroundColor: "rgba(255,255,255,0.4)",
-    padding: 6,
+    top: "5%",
+    left: "3%",
+    backgroundColor: "#fff",
     borderRadius: 20,
+    padding: 6,
   },
-  headerInfo: { marginTop: 10, paddingHorizontal: 16 },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: "#3a3c41ff" },
-  headerDescription: { color: "#4b5563", marginBottom: 6 },
-  open: { color: "green", fontWeight: "700", marginTop: 4 },
-  closed: { color: "red", fontWeight: "700", marginTop: 4 },
-  headerStats: { flexDirection: "row", marginTop: 4, gap: 20, justifyContent: "center" },
-  statItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statText: { color: "#000", fontWeight: "500" },
+  headerInfo: { marginVertical: 12 },
+  title: { fontSize: 22, fontWeight: "700" },
+  desc: { color: "#6b7280" },
 
-  tabsContainer: { marginTop: 16, paddingHorizontal: 16 },
-  tabButton: {
-    backgroundColor: "#ddd",
+  tabsContainer: { paddingVertical: 10, paddingHorizontal: "3%" },
+  tab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: "#eee",
+    borderRadius: 10,
     marginRight: 8,
   },
-  tabActive: { backgroundColor: "#92400e" },
-  tabText: { color: "#111" },
+  tabActive: { backgroundColor: "#ef4444" },
+  tabText: { color: "#000" },
   tabTextActive: { color: "#fff" },
 
-  subcategoryContainer: { paddingHorizontal: 16, marginTop: 12 },
-  dropdownTrigger: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 12,
+  subcategoryContainer: { marginBottom: 12, paddingHorizontal: "3%" },
+  dropdown: {
     borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 10,
-  },
-  dropdownText: { fontSize: 15 },
-  modalOverlay: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalContent: { backgroundColor: "#fff", marginHorizontal: 40, padding: 20, borderRadius: 10 },
-  modalTitle: { textAlign: "center", fontSize: 18, fontWeight: "700" },
-  modalOption: { paddingVertical: 12 },
-  modalOptionText: { textAlign: "center", fontSize: 16 },
-  modalClose: { backgroundColor: "#92400e", padding: 12, borderRadius: 10 },
-  modalCloseText: { color: "#fff", textAlign: "center" },
-
-  productsGrid: { paddingHorizontal: 16, marginTop: 16 },
-  row: { justifyContent: "space-between", marginBottom: 16 },
-  productWrapper: { flex: 1 },
-  noProducts: { textAlign: "center", marginTop: 20 },
-
-  bottomCartBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderColor: "#e5e7eb",
+    padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    elevation: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: -3 },
   },
-  cartBottomText: { fontSize: 15, fontWeight: "600", color: "#333" },
-  cartBottomBtn: { backgroundColor: "#ee1212ff", paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 },
-  cartBottomBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});
 
-export default RestaurantFood;
+  empty: { textAlign: "center", marginTop: 40 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+  },
+  modal: {
+    backgroundColor: "#fff",
+    marginHorizontal: "8%",
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalTitle: { textAlign: "center", fontWeight: "700", marginBottom: 12 },
+  modalItem: { paddingVertical: 10 },
+
+  productWrapper: { flex: 1, marginBottom: 16 },
+
+  cartBar: {
+    position: "absolute",
+    bottom: "4%",
+    left: "5%",
+    right: "5%",
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    paddingHorizontal: "5%",
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    elevation: 6,
+  },
+  cartBtn: { color: "#ef4444", fontWeight: "700" },
+});

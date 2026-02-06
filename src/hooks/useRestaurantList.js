@@ -13,7 +13,16 @@ export function useRestaurantList() {
   return useQuery({
     queryKey: ["restaurant"],
     queryFn: fetchRestaurants,
-    staleTime: 5 * 60 * 1000,
+ // ✅ cache data
+    staleTime: 1000 * 60 * 10, // 5 minutes
+
+    // ✅ keep in memory
+    cacheTime: 1000 * 60 * 30, // 30 minutes
+
+    // ✅ refetch only on real events
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }
 
