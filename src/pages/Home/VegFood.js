@@ -53,7 +53,7 @@ const VegFood = () => {
   }, [vegItems]);
 
   if (isLoading) return <SkeletonLoader />;
-  if (error) return <Text>Something went wrong.</Text>;
+  if (error) return <SkeletonLoader />;
 
   return (
     <View style={styles.container}>

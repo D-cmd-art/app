@@ -79,7 +79,7 @@ const BestReviewedFood = () => {
   if (error)
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Error loading food items.</Text>
+       <SkeletonLoader />
       </View>
     );
 

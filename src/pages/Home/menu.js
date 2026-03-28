@@ -57,9 +57,7 @@ const Categories = () => {
       {isLoading ? (
         renderSkeleton()
       ) : error ? (
-        <View style={styles.center}>
-          <Text style={styles.errorText}>Error loading categories</Text>
-        </View>
+         renderSkeleton()
       ) : (
         <FlatList
           data={categories}

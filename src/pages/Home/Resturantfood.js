@@ -63,7 +63,7 @@ export default function RestaurantFood() {
   if (error)
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={{ color: "red" }}>Failed to load data</Text>
+     <ActivityIndicator size="large" color="#e11d48" />
       </SafeAreaView>
     );
 

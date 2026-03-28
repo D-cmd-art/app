@@ -13,6 +13,8 @@ const Slideshow = () => {
   useEffect(() => {
     if (photos.length === 0) return;
 
+
+
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % photos.length);
     }, 8000);
@@ -26,6 +28,10 @@ const Slideshow = () => {
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#1521C4" />
         <Text>Loading...</Text>
+        
+
+
+
       </View>
     );
   }
@@ -33,7 +39,7 @@ const Slideshow = () => {
   if (error) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>Something went wrong!</Text>
+      
       </View>
     );
   }

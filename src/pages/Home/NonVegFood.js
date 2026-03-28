@@ -30,7 +30,7 @@ const VegFood = () => {
 
 
   if (isLoading) return <SkeletonLoader />;
-  if (error) return <Text>Error occurred while loading food items.</Text>;
+  if (error) return <SkeletonLoader />;
 
   return (
     <View style={styles.container}>

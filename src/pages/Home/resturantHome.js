@@ -41,8 +41,17 @@ const AllRestaurants = () => {
    * Render Error
    -----------------------------------*/
   const renderError = () => (
-    <View style={styles.center}>
-      <Text style={styles.errorText}>Error loading restaurants</Text>
+ <View style={styles.loaderContainer}>
+      <SkeletonPlaceholder borderRadius={10}>
+        {[...Array(2)].map((_, i) => (
+          <View key={i} style={styles.skeletonCard}>
+            <View style={styles.skeletonImage} />
+            <View style={styles.skeletonLogo} />
+            <View style={styles.skeletonText} />
+            <View style={styles.skeletonSubtext} />
+          </View>
+        ))}
+      </SkeletonPlaceholder>
     </View>
   );
 
