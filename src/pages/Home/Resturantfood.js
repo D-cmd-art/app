@@ -296,30 +296,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
+    
   },
   modal: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFEFE",
     marginHorizontal: "8%",
-    borderRadius: 12,
+
+    borderRadius: "5%",
     padding: 16,
   },
-  modalTitle: { textAlign: "center", fontWeight: "700", marginBottom: 12 },
-  modalItem: { paddingVertical: 10 },
+  modalTitle: { textAlign: "center",  fontWeight: "700", marginBottom: 12 },
+  modalItem: { paddingVertical: 10, },
 
-  productWrapper: { flex: 1, marginBottom: 16 },
+  productWrapper: { flex: 1, marginBottom: 16 ,},
 
   cartBar: {
     position: "absolute",
-    bottom: "4%",
-    left: "5%",
-    right: "5%",
-    backgroundColor: "#fff",
+    bottom: "1%",
+   left:"2%",
+   right:"30%",
+    backgroundColor: "#F8C6C6",
+    
     paddingVertical: 14,
     paddingHorizontal: "5%",
     borderRadius: 14,
     flexDirection: "row",
-    justifyContent: "space-between",
-    elevation: 6,
+    gap:20,
+    justifyContent:"flex-start",
+    
+    elevation: 2,
   },
   cartBtn: { color: "#ef4444", fontWeight: "700" },
 });

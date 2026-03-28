@@ -1,47 +1,58 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../utils/api";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import {api} from "../utils/api";
-// add favourites to the database
-
+// ---------------------------
+// Add favourite
 export function useFavourites(options) {
-    return useMutation({
-      mutationFn: async (data) => {
-        const res = await api.post('/favourites/add', data);
-        return res.data;
-      },
-      ...options
-    });
-  }
-  // get favourites list based on the userId
-  async function fetchFavouriteList(userId){
-    const res=await api.get(`/favourites`,{params:{userId}});
-    return res.data.favourites;
-   }
-  export function useFavouritesList(userId){
-    
-      return useQuery({
-         queryKey:["favourites",userId],
-         queryFn:()=>fetchFavouriteList(userId),
-         refetchInterval:10000,
-         refetchIntervalInBackground:false,
-         staleTime:0,
-         enabled: !!userId,
-      })
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post('/favourites/add', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      // ✅ Invalidate / refetch favourite queries after mutation
+      queryClient.invalidateQueries(['favourites']);
+      queryClient.invalidateQueries(['favouritesAll']);
+    },
+    ...options
+  });
+}
 
-  }
-  
-  // get favourites List all products and restaurants available
-  async function fetchFavouriteListAll(userId){
-    const res=await api.get(`/favourites/full`,{params:{userId}});
-    return res.data.favourites;
-  }
-  export function useFavouriteListAll(userId){
-      return useQuery({
-         queryKey:["favouritesAll",userId],
-         queryFn:()=>fetchFavouriteListAll(userId),
-         refetchInterval:100,
-         refetchIntervalInBackground:false,
-         staleTime:0,
-         enabled: !!userId,
-      })
-  }
+// ---------------------------
+// Get favourites for a user
+async function fetchFavouriteList(userId) {
+  const res = await api.get('/favourites', { params: { userId } });
+  return res.data.favourites;
+}
+
+export function useFavouritesList(userId) {
+  return useQuery({
+    queryKey: ["favourites", userId],
+    queryFn: () => fetchFavouriteList(userId),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 15, // 5 minutes
+    cacheTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false, // ✅ avoid aggressive polling
+  });
+}
+
+// ---------------------------
+// Get all favourites (products + restaurants)
+async function fetchFavouriteListAll(userId) {
+  const res = await api.get('/favourites/full', { params: { userId } });
+  return res.data.favourites;
+}
+
+export function useFavouriteListAll(userId) {
+  return useQuery({
+    queryKey: ["favouritesAll", userId],
+    queryFn: () => fetchFavouriteListAll(userId),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    cacheTime: 1000 * 60 * 30, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false, // ✅ avoid aggressive polling
+  });
+}

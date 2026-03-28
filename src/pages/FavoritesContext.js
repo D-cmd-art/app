@@ -1,50 +1,71 @@
-// FavoritesContext.js
-import React, { createContext, useContext, useState } from 'react';
+// src/context/FavouritesContext.js
+import React, { createContext, useContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useUserStore } from "../utils/store/userStore";
 
-const FavoritesContext = createContext();
+const FavouritesContext = createContext();
 
-export const useFavorites = () => useContext(FavoritesContext);
+export const FavouritesProvider = ({ children }) => {
+  const { user } = useUserStore();
+  const [favourites, setFavourites] = useState([]);
+  const storageKey = user ? `favourites_${user.id}` : null;
 
-export const FavoritesProvider = ({ children }) => {
-  const [favoriteItems, setFavoriteItems] = useState([]);
-
-  // Function to add an item to favorites
-  const addToFavorites = (item) => {
-    // Check if item is already in favorites
-    const exists = favoriteItems.some(fav => fav.id === item.id);
-    if (!exists) {
-      setFavoriteItems((prevItems) => [...prevItems, item]);
-      return true; // Added successfully
-    }
-    return false; // Already exi
+  const normalizeProduct = (product) => {
+    if (!product) return null;
+    return { ...product, _id: product._id || product.id };
   };
 
-  // Function to remove an item from favorites
-  const removeFromFavorites = (itemId) => {
-    setFavoriteItems((prevItems) => prevItems.filter(item => item.id !== itemId));
-  };
-  
-  // Function to check if an item is a favorite
-  const isFavorite = (itemId) => {
-      return favoriteItems.some(item => item.id === itemId);
-  }
+  // Load favourites once
+  useEffect(() => {
+    const loadFavourites = async () => {
+      if (!storageKey) return setFavourites([]);
+      try {
+        const stored = await AsyncStorage.getItem(storageKey);
+        let parsed = stored ? JSON.parse(stored) : [];
+        parsed = parsed.map(normalizeProduct).filter((p) => p && p?._id);
+        setFavourites(parsed);
+      } catch (err) {
+        console.warn("Failed to load favourites:", err);
+        setFavourites([]);
+      }
+    };
+    loadFavourites();
+  }, [storageKey]);
 
-  // Function to clear all favorites
-  const clearFavorites = () => {
-      setFavoriteItems([]);
-  }
+  // Optimistic toggle
+  const toggleFavourite = (product) => {
+    if (!storageKey) return;
+    const normalized = normalizeProduct(product);
+    if (!normalized?._id) return;
 
-  const value = {
-    favoriteItems,
-    addToFavorites,
-    removeFromFavorites,
-    isFavorite,
-    clearFavorites,
+    setFavourites((prev) => {
+      let updated;
+      if (prev.some((p) => p && p._id === normalized._id)) {
+        updated = prev.filter((p) => p && p._id !== normalized._id);
+      } else {
+        updated = [...prev, normalized];
+      }
+
+      // Persist in background (non-blocking)
+      AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch((err) =>
+        console.warn("Failed to save favourite:", err)
+      );
+
+      return updated;
+    });
   };
 
   return (
-    <FavoritesContext.Provider value={value}>
+    <FavouritesContext.Provider value={{ favourites, toggleFavourite }}>
       {children}
-    </FavoritesContext.Provider>
+    </FavouritesContext.Provider>
   );
+};
+
+export const useFavouritesContext = () => {
+  const context = useContext(FavouritesContext);
+  if (!context) {
+    throw new Error("useFavouritesContext must be used within FavouritesProvider");
+  }
+  return context;
 };

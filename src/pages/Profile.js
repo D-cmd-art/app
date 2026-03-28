@@ -123,7 +123,14 @@ const Profile = () => {
             <Switch value={darkMode} onValueChange={setDarkMode} />
           </View>
         </Section>
-
+<Section title="Earning" theme={theme}>
+   <MenuItem
+           icon="coins"
+            label="Refer and Earn"
+            theme={theme}
+            onPress={() => navigation.navigate("ReferandEarn")}
+          />
+</Section>
         <Section title="Help & Support" theme={theme}>
           <MenuItem
             icon="question-circle"

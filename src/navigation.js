@@ -14,7 +14,7 @@ const { height } = Dimensions.get('window');
 
 // Define a fixed base height for the tab content (icons, labels, etc.)
 // This height is where your icons will be perfectly centered.
-const TAB_BAR_CONTENT_HEIGHT = 48; // Adjust as needed
+const TAB_BAR_CONTENT_HEIGHT = 50; // Adjust as needed
 
 // ----------------------------------------------------------------------
 // 1. Custom Tab Bar Wrapper (Handles Dynamic Height & Centering)
@@ -73,7 +73,7 @@ const Tabs = () => {
                     tabBarIcon: ({ focused }) => (
                         <Ionicons
                             name={focused ? 'home' : 'home-outline'}
-                            size={26}
+                            size={28}
                             color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
@@ -86,7 +86,7 @@ const Tabs = () => {
                     tabBarIcon: ({ focused }) => (
                         <Ionicons
                             name={focused ? 'heart' : 'heart-outline'}
-                            size={26}
+                            size={28}
                             color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
@@ -99,7 +99,7 @@ const Tabs = () => {
                     tabBarIcon: ({ focused }) => (
                         <Ionicons
                             name={focused ? 'cart' : 'cart-outline'}
-                            size={26}
+                            size={28}
                             color={focused ? '#fc1313ff' : '#fc1313ff'}
                         />
                     ),
@@ -112,7 +112,7 @@ const Tabs = () => {
                     tabBarIcon: ({ focused }) => (
                         <Ionicons
                             name={focused ? 'person' : 'person-outline'}
-                            size={26}
+                            size={28}
                             color={focused ? '#fc1313ff' : '#f80808ff'}
                         />
                     ),

@@ -10,6 +10,10 @@ export const useCartStore = create(
       addItem: (item) => {
         const state = get();
 
+        // Normalize product ID
+        const productId = item._id || item.id;
+        if (!productId) return false;
+
         // Only allow one restaurant at a time
         if (state.items.length > 0) {
           const cartRestaurantId =
@@ -26,22 +30,23 @@ export const useCartStore = create(
           }
         }
 
-        const existing = state.items.find((i) => i._id === item._id);
-        if (existing) {
-          set({
-            items: state.items.map((i) =>
-              i._id === item._id
-                ? { ...i, quantity: i.quantity + 1 }
-                : i
-            ),
-          });
-        } else {
-          set({
-            items: [...state.items, { ...item, quantity: 1 }],
-          });
-        }
+        // Optimistic update: update state immediately
+        set((state) => {
+          const existing = state.items.find((i) => i._id === productId);
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i._id === productId
+                  ? { ...i, quantity: i.quantity + 1 }
+                  : i
+              ),
+            };
+          }
+          return { items: [...state.items, { ...item, quantity: 1 }] };
+        });
 
-        return true; // Successfully added
+        // Persistence happens automatically in background via persist middleware
+        return true;
       },
 
       decreaseItem: (id) =>

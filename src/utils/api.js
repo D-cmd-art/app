@@ -1,15 +1,30 @@
-// lib/client/api.js
 import axios from 'axios';
 import { useUserStore } from './store/userStore';
-import { jwtDecode } from 'jwt-decode';
+import jwtDecode from 'jwt-decode';
 import { getTokens, saveTokens, deleteTokens } from '../utils/tokenStorage';
+import { Platform } from 'react-native';
+
+const PRIMARY_API = 'http://bhokexpress.com/api';
+const FALLBACK_API = 'https://food-woad-six.vercel.app/api';
 
 const api = axios.create({
-  baseURL: 'http://bhokexpress.com/api', // 👈 confirm this matches your backend
+  baseURL: PRIMARY_API,
 });
 
-// ✅ Attach access token only if not skipping
+let requestCount = 0;
+
 api.interceptors.request.use(async (config) => {
+  requestCount += 1;
+
+  console.log(
+    `[Request #${requestCount}]`,
+    config.method.toUpperCase(),
+    config.url,
+    'from',
+    Platform.OS,
+    'skipAuth:', !!config._skipAuthInterceptor
+  );
+
   const tokens = await getTokens();
 
   if (tokens?.accessToken && !config._skipAuthInterceptor) {
@@ -19,26 +34,27 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ✅ Refresh token on 401
+// Response interceptor with token refresh & fallback
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
     const { setAccessToken, setUser, clear } = useUserStore.getState();
 
+    // Skip interceptor flag
     if (originalRequest._skipAuthInterceptor) {
       return Promise.reject(error);
     }
 
+    // Token refresh logic
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
       try {
         const tokens = await getTokens();
         if (!tokens?.refreshToken) throw new Error('No refresh token');
 
         const res = await axios.post(
-          'http://bhokexpress.com/api/refresh/mobile',
+          `${PRIMARY_API}/refresh/mobile`,
           { refreshToken: tokens.refreshToken },
           { headers: { _skipAuthInterceptor: true } }
         );
@@ -56,6 +72,21 @@ api.interceptors.response.use(
         await deleteTokens();
         clear();
         return Promise.reject(err);
+      }
+    }
+
+    // ❌ If error is network or blocked IP, try fallback API
+    if (!error.response || error.response.status === 403 || error.response.status === 429) {
+      try {
+        console.warn('Primary API failed, trying fallback...');
+        const fallbackResponse = await axios({
+          ...originalRequest,
+          baseURL: FALLBACK_API,
+          _skipAuthInterceptor: true, // avoid retry loop
+        });
+        return fallbackResponse;
+      } catch (fallbackError) {
+        return Promise.reject(fallbackError);
       }
     }
 

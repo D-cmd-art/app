@@ -6,11 +6,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// ✅ Correct import (matches your context file name and export)
+import { FavouritesProvider } from "./src/pages/FavoritesContext.js";
 import { CartProvider } from './src/pages/CartContext.js';
-import { FavoritesProvider } from './src/pages/FavoritesContext.js';
+
 import { useUserStore } from './src/utils/store/userStore.js';
 import { getTokens } from './src/utils/tokenStorage.js';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 // Screens
 import Welcome from './src/pages/welcomescreen.js';
@@ -27,6 +29,7 @@ import HelpAndSupport from './src/pages/setting/Helpandsupports.js';
 import Wallets from './src/pages/setting/Wallets.js';
 import Address from './src/pages/setting/Address.js';
 import Favourites from './src/pages/favourite.js';
+
 import Search from './src/pages/Home/Search.js';
 import Order from './src/pages/setting/order.js';
 import ProfileDetails from './src/pages/setting/ProfileDetails.js';
@@ -95,18 +98,16 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
-    // 1. Listen for network changes
     const unsubscribe = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected ?? false);
     });
 
-    // 2. Check if tokens exist and set user
     const checkStoredToken = async () => {
       try {
         const tokens = await getTokens();
         if (tokens?.accessToken) {
           const decoded = jwtDecode(tokens.accessToken);
-          setUser(decoded); // Set user in store
+          setUser(decoded);
         }
       } catch (err) {
         console.warn('Token check failed:', err);
@@ -116,7 +117,6 @@ export default function App() {
     };
     checkStoredToken();
 
-    // 3. Splash timer
     const splashTimer = setTimeout(() => setShowSplash(false), 2500);
 
     return () => {
@@ -125,12 +125,10 @@ export default function App() {
     };
   }, [setUser]);
 
-  // -------------------- SPLASH SCREEN --------------------
   if (showSplash || checkingAuth) {
     return <SplashScreen navigation={null} />;
   }
 
-  // -------------------- NO INTERNET --------------------
   if (!isConnected) {
     return (
       <View style={styles.noInternetContainer}>
@@ -141,10 +139,9 @@ export default function App() {
     );
   }
 
-  // -------------------- MAIN APP --------------------
   return (
     <QueryClientProvider client={queryClient}>
-      <FavoritesProvider>
+      <FavouritesProvider>
         <CartProvider>
           <SafeAreaProvider>
             <NavigationContainer>
@@ -158,7 +155,7 @@ export default function App() {
             </NavigationContainer>
           </SafeAreaProvider>
         </CartProvider>
-      </FavoritesProvider>
+      </FavouritesProvider>
     </QueryClientProvider>
   );
 }

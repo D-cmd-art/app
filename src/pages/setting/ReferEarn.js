@@ -5,14 +5,46 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Share,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useUserStore } from "../../utils/store/userStore";
 
 const ReferAndEarn = () => {
   const navigation = useNavigation();
-  const referralCode = 'FOOD123';
+  const { user } = useUserStore();
+
+  // Generate short referral code from middle of user ID
+  const getReferralCode = (id, length = 6) => {
+    if (!id) return 'XXXXXX';
+    const start = Math.floor((id.length - length) / 2);
+    return id.substring(start, start + length).toUpperCase();
+  };
+
+  const referralCode = getReferralCode(user?.id);
+
+  // Share referral code
+  const handleShare = async () => {
+    try {
+      const message = ` Use my referral code "${referralCode}" to get Free Delivery services on your first order! Download the app here: https://play.google.com/store/apps/details?id=com.bhokexpress&pcampaignid=web_share`;
+      const result = await Share.share({
+        message,
+        title: 'Invite & Earn',
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('Shared successfully!');
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Share dismissed');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to share referral code.');
+      console.error('Share error:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,7 +68,7 @@ const ReferAndEarn = () => {
         <View style={styles.codeCard}>
           <Text style={styles.codeLabel}>Your Referral Code</Text>
           <Text style={styles.code}>{referralCode}</Text>
-          <TouchableOpacity style={styles.shareButton}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Text style={styles.shareText}>Share Code</Text>
           </TouchableOpacity>
         </View>
@@ -44,7 +76,7 @@ const ReferAndEarn = () => {
         {/* How It Works */}
         <Text style={styles.sectionTitle}>How It Works</Text>
         <View style={styles.step}>
-          <Ionicons name="person-add-outline" size={24} color="#2e7d32" />
+          <Ionicons name="person-add-outline" size={24} color="#B43402" />
           <Text style={styles.stepText}>Invite your friends using your referral code.</Text>
         </View>
         <View style={styles.step}>
@@ -53,7 +85,7 @@ const ReferAndEarn = () => {
         </View>
         <View style={styles.step}>
           <Ionicons name="cash-outline" size={24} color="#2e7d32" />
-          <Text style={styles.stepText}>You both earn Rs. 50 cashback!</Text>
+          <Text style={styles.stepText}>Get one free Delivery on you next order</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -63,10 +95,7 @@ const ReferAndEarn = () => {
 export default ReferAndEarn;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fefefe',
-  },
+  container: { flex: 1, backgroundColor: '#fefefe' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -74,17 +103,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 30,
-  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  content: { paddingHorizontal: 16, paddingBottom: 30 },
   banner: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: '#FA6225',
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -105,41 +127,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  codeLabel: {
-    fontSize: 16,
-    color: '#777',
-  },
-  code: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2e7d32',
-    marginVertical: 10,
-  },
+  codeLabel: { fontSize: 16, color: '#777' },
+  code: { fontSize: 28, fontWeight: 'bold', color: '#FA6225', marginVertical: 10 },
   shareButton: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: '#FA6225',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
   },
-  shareText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#444',
-  },
-  step: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  stepText: {
-    fontSize: 14,
-    color: '#555',
-    marginLeft: 10,
-    flex: 1,
-  },
+  shareText: { color: '#fff', fontWeight: '600' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10, color: '#444' },
+  step: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  stepText: { fontSize: 14, color: '#555', marginLeft: 10, flex: 1 },
 });

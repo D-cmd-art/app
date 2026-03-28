@@ -2,8 +2,13 @@
 
 import { api } from "../utils/api";
 import { useQuery } from "@tanstack/react-query";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Fetch all restaurants
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+const RESTAURANT_SESSION_KEY = 'restaurant_session';
+const PRODUCTS_SESSION_KEY_PREFIX = 'restaurant_products_';
+
+// -------------------- FETCH RESTAURANTS --------------------
 const fetchRestaurants = async () => {
   const res = await api.get('/restaurant');
   return res.data.restaurant;
@@ -12,21 +17,34 @@ const fetchRestaurants = async () => {
 export function useRestaurantList() {
   return useQuery({
     queryKey: ["restaurant"],
-    queryFn: fetchRestaurants,
- // ✅ cache data
-    staleTime: 1000 * 60 * 10, // 5 minutes
+    queryFn: async () => {
+      // Check session
+      const session = await AsyncStorage.getItem(RESTAURANT_SESSION_KEY);
+      if (session) {
+        const { data, timestamp } = JSON.parse(session);
+        if (Date.now() - timestamp < SESSION_DURATION) {
+          return data; // return cached session data
+        }
+      }
 
-    // ✅ keep in memory
-    cacheTime: 1000 * 60 * 30, // 30 minutes
-
-    // ✅ refetch only on real events
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
+      // Fetch fresh data
+      const data = await fetchRestaurants();
+      await AsyncStorage.setItem(
+        RESTAURANT_SESSION_KEY,
+        JSON.stringify({ data, timestamp: Date.now() })
+      );
+      return data;
+    },
+    staleTime: SESSION_DURATION,       // session freshness
+    cacheTime: SESSION_DURATION,       // keep in memory for 2 hours
+    refetchOnWindowFocus: false,       // prevent extra calls
+    refetchOnReconnect: false,
     refetchOnMount: false,
+    retry: false,                      // no automatic retries
   });
 }
 
-// Fetch restaurant products by ID
+// -------------------- FETCH RESTAURANT PRODUCTS --------------------
 const fetchRestaurantProduct = async (restaurantId) => {
   const res = await api.get(`/restaurant/${restaurantId}`);
   return res.data;
@@ -35,7 +53,30 @@ const fetchRestaurantProduct = async (restaurantId) => {
 export function useRestaurantProducts(id) {
   return useQuery({
     queryKey: ["restaurantProducts", id],
-    queryFn: () => fetchRestaurantProduct(id),
+    queryFn: async () => {
+      const sessionKey = `${PRODUCTS_SESSION_KEY_PREFIX}${id}`;
+      const session = await AsyncStorage.getItem(sessionKey);
+
+      if (session) {
+        const { data, timestamp } = JSON.parse(session);
+        if (Date.now() - timestamp < SESSION_DURATION) {
+          return data; // return cached session data
+        }
+      }
+
+      const data = await fetchRestaurantProduct(id);
+      await AsyncStorage.setItem(
+        `${PRODUCTS_SESSION_KEY_PREFIX}${id}`,
+        JSON.stringify({ data, timestamp: Date.now() })
+      );
+      return data;
+    },
     enabled: !!id,
+    staleTime: SESSION_DURATION,
+    cacheTime: SESSION_DURATION,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: false,
   });
 }

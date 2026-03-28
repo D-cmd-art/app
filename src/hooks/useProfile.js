@@ -30,6 +30,7 @@ export function useEditPassword(options) {
         id,
         oldPassword,
         newPassword
+        
       });
      
       return res.data;

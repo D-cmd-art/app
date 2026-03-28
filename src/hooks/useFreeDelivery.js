@@ -12,6 +12,16 @@ export function useFreeDelivery(userId, options = {}) {
       try {
         const res = await api.get("/auth/user/freeDelivery", {
           params: { userId },
+           // ✅ cache data
+    staleTime: 1000 * 60 * 25, // 5 minutes
+
+    // ✅ keep in memory
+    cacheTime: 1000 * 60 * 25, // 30 minutes
+
+    // ✅ refetch only on real events
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
         });
 
         // CRITICAL FIX: Ensure the value is a number and defaults to 0 if null/undefined.
@@ -24,8 +34,19 @@ export function useFreeDelivery(userId, options = {}) {
         console.error("Failed to fetch free delivery count:", error);
         return 0; 
       }
+      
     },
     enabled: !!userId, 
     ...options,
+             // ✅ cache data
+    staleTime: 1000 * 60 * 10, // 5 minutes
+
+    // ✅ keep in memory
+    cacheTime: 1000 * 60 * 10, // 30 minutes
+
+    // ✅ refetch only on real events
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }

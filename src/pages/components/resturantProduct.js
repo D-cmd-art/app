@@ -1,54 +1,65 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
   StyleSheet,
+  Animated,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { useFavourites, useFavouritesList } from "../../hooks/useFavourites";
-import { useUserStore } from "../../utils/store/userStore";
+import { useFavouritesContext } from "../FavoritesContext";
 import { useCartStore } from "../../utils/store/cartStore";
 
-const RestaurantProductCard = React.memo(({ item, onPress, onFavouriteUpdate }) => {
-  const [isFavourite, setIsFavourite] = useState(false);
-
-  const { user } = useUserStore();
+const RestaurantProductCard = ({ item, onPress }) => {
+  const { favourites, toggleFavourite } = useFavouritesContext();
   const { addItem, decreaseItem, items } = useCartStore();
-  const { mutate } = useFavourites();
-  const { data: favouriteData } = useFavouritesList(user?.id) || {};
+  const [toastMessage, setToastMessage] = useState("");
+  const toastAnim = useRef(new Animated.Value(0)).current;
 
   const cartItem = items.find(i => i._id === item._id);
+  const isFavourite = favourites.some(p => p?._id === item._id);
   const isOpen = checkRestaurantOpenStatus(item?.restaurant?.time);
 
-  // Set favourite state only when favouriteData changes
-  useEffect(() => {
-    if (favouriteData?.productIds) {
-      setIsFavourite(favouriteData.productIds.includes(item._id));
-    }
-  }, [favouriteData, item._id]);
-
-  const toggleFavourite = () => {
-    if (!user) return;
-    const newState = !isFavourite;
-    setIsFavourite(newState);
-
-    mutate(
-      {
-        userId: user.id,
-        productId: item._id,
-        restaurantId: null,
-        isFavourite: newState,
-      },
-      {
-        onSuccess: () => onFavouriteUpdate?.(),
-        onError: () => setIsFavourite(!newState),
-      }
-    );
+  // --- Show toast function
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    Animated.timing(toastAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => {
+        Animated.timing(toastAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setToastMessage(""));
+      }, 2000);
+    });
   };
 
-  // Memoized stars to avoid re-render
+  // --- Handle add to cart
+  const handleAddToCart = () => {
+    if (!isOpen) {
+      showToast("Restaurant is closed.");
+      return; // Exit early and do NOT add
+    }
+const toggleFavouriteHandler = () => {
+  toggleFavourite(item); // your existing favourite toggle logic
+  showToast(isFavourite ? "Removed from favourites ❌" : "Added to favourites ✅");
+};
+
+    const success = addItem(item); // returns false if different restaurant exists
+
+    if (success) {
+      showToast("Added to cart ✅");
+    } else {
+      showToast("You can only order from one restaurant at a time ❌");
+    }
+  };
+
+  // Memoized stars
   const stars = useMemo(() => {
     const rating = item.rating?.average || 0;
     return [...Array(5)].map((_, i) => (
@@ -86,50 +97,72 @@ const RestaurantProductCard = React.memo(({ item, onPress, onFavouriteUpdate }) 
 
       {/* Right Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity onPress={toggleFavourite}>
+        {/* Favourite button */}
+        <TouchableOpacity onPress={() => toggleFavourite(item)}>
           <Ionicons
             name={isFavourite ? "heart" : "heart-outline"}
-            size={22}
+            size={30}
             color="#ef4444"
           />
         </TouchableOpacity>
 
+        {/* Cart button */}
         {cartItem ? (
           <View style={styles.qtyRow}>
             <TouchableOpacity onPress={() => decreaseItem(item._id)}>
               <Ionicons name="remove-circle" size={26} color="#ef4444" />
             </TouchableOpacity>
             <Text style={styles.qty}>{cartItem.quantity}</Text>
-            <TouchableOpacity onPress={() => addItem(item)}>
+            <TouchableOpacity onPress={handleAddToCart}>
               <Ionicons name="add-circle" size={26} color="#22c55e" />
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity
             style={[styles.addBtn, !isOpen && styles.disabled]}
-            onPress={() => isOpen && addItem(item)}
+            onPress={handleAddToCart}
           >
             <Text style={styles.addText}>{isOpen ? "ADD" : "CLOSED"}</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Toast message */}
+      {toastMessage !== "" && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              opacity: toastAnim,
+              transform: [
+                {
+                  translateY: toastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [10, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </Animated.View>
+      )}
     </TouchableOpacity>
   );
-});
+};
 
-// Helper
+// --- Helper
 function checkRestaurantOpenStatus(time) {
   if (!time) return true;
   const now = new Date();
   const current = now.getHours() * 60 + now.getMinutes();
-
   const [oh, om] = time.open.split(":").map(Number);
   const [ch, cm] = time.closed.split(":").map(Number);
-
   return current >= oh * 60 + om && current < ch * 60 + cm;
 }
 
-// Styles
+// --- Styles
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -140,7 +173,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 3,
   },
-  image: { width: 110, height: 110, borderRadius: 10 },
+  image: { width: 110, height: 110, borderRadius: 25 },
   info: { flex: 1, marginHorizontal: 12 },
   name: { fontSize: 15, fontWeight: "700", color: "#111" },
   ratingRow: { flexDirection: "row", alignItems: "center", marginVertical: 2 },
@@ -148,11 +181,28 @@ const styles = StyleSheet.create({
   restaurant: { fontSize: 12, color: "#6b7280" },
   price: { fontSize: 15, fontWeight: "700", color: "#f97316", marginTop: 4 },
   actions: { alignItems: "center", gap: 10 },
-  addBtn: { backgroundColor: "#22c55e", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  addBtn: {
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
   disabled: { backgroundColor: "#ef4444" },
   addText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   qtyRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   qty: { fontWeight: "700", fontSize: 14 },
+  toast: {
+    position: "absolute",
+    bottom: -25,
+    left: 0,
+    right: 0,
+    backgroundColor: "#ef4444",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginHorizontal: 12,
+  },
+  toastText: { color: "#fff", fontSize: 12, textAlign: "center", fontWeight: "600" },
 });
 
 export default RestaurantProductCard;

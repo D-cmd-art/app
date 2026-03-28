@@ -93,7 +93,7 @@ export default function ConfirmOrder() {
     );
     return () => backHandler.remove();
   }, [navigation]);
-
+//const dist = useMapStore((s) => s.distance); // already in your code
   // Calculate distance
   useEffect(() => {
     if (location && restaurantLocation) {
@@ -103,8 +103,10 @@ export default function ConfirmOrder() {
         restaurantLocation.lat,
         restaurantLocation.lng
       );
+       console.log(dist);
       setDistance(dist);
     }
+   
   }, [location, restaurantLocation]);
 
   // Calculate delivery charge
@@ -133,6 +135,14 @@ export default function ConfirmOrder() {
     }
     if (paymentMethod === 'cash' && subtotal > 3000) {
       Alert.alert('Restriction', 'Cannot place orders above NPR 3000 using COD.');
+      return null;
+    }
+ if (paymentMethod === 'cash' && distance > 7) {
+      Alert.alert('Restriction', 'you cannot order above 7km.');
+      return null;
+    }
+    if (paymentMethod === 'QRPAY' && distance > 7) {
+      Alert.alert('Restriction', 'you cannot order above 7km.');
       return null;
     }
     if (paymentMethod === 'QRPAY' && (!txnId.trim() || !note.trim())) {
@@ -169,13 +179,21 @@ export default function ConfirmOrder() {
   };
 
   const handleConfirm = async () => {
-    if (finalPrice > 3000 && paymentMethod === 'cash') {
+    if (finalPrice > 3000 && paymentMethod === 'cash' ) {
       ToastAndroid.show(
         '❌ Cannot order more than Rs. 3000 Through COD',
         ToastAndroid.LONG
       );
+ 
       return;
     }
+      if ( distance > 5) {
+  ToastAndroid.show(
+    '❌ Delivery is not available above 7 km',
+    ToastAndroid.LONG
+  );
+  return;
+}
 
     const payload = createOrderPayload();
     if (!payload) return;
