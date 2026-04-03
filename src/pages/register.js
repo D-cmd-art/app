@@ -20,6 +20,8 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import { useNavigation } from "@react-navigation/native";
+import Toast from 'react-native-simple-toast';
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRegister } from "../hooks/useRegister";
 import { useUserStore } from "../utils/store/userStore";
@@ -83,18 +85,22 @@ export default function RegistrationScreen() {
             setUser(user);
 
             resetForm();
-            Alert.alert("Success", `Welcome ${user.name || "User"}!`);
+       Toast.show(`Welcome ${user.name || "User"}!`, Toast.LONG);
+
            navigation.getParent()?.replace("App");
           } catch (err) {
             console.error("Registration post-processing error:", err);
-            Alert.alert("Error", "Something went wrong after registration.");
+          Toast.show(msg, Toast.LONG);
+
           } finally {
             setLoading(false);
           }
         },
         onError: (error) => {
           const msg = error?.response?.data?.error || error.message || "Registration failed";
-          Alert.alert("Error", msg);
+        Toast.show(msg, Toast.LONG);
+
+
           setLoading(false);
         },
       }
@@ -157,7 +163,9 @@ export default function RegistrationScreen() {
                       />
                     </View>
                     {errors[field] && touched[field] && (
-                      <Text style={styles.error}>{errors[field]}</Text>
+                       Toast.show(errors[field], Toast.SHORT)
+
+
                     )}
                   </View>
                 ))}
@@ -261,7 +269,7 @@ const styles = StyleSheet.create({
     fontSize: width < 360 ? 14 : 16,
     color: "#4d2828ff",
   },
-  error: { color: "#d9534f", marginTop: 4, fontSize: 12 },
+  error: {  color: "#d9534f", marginTop: 4, fontSize: 12 },
   button: {
     backgroundColor: "#ee1212ff",
     paddingVertical: 16,

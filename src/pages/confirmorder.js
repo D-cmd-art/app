@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import Toast from 'react-native-simple-toast';
 import { useUserStore } from '../utils/store/userStore';
 import { useCartStore } from '../utils/store/cartStore';
 import { useMapStore } from '../utils/store/mapStore';
@@ -122,27 +122,34 @@ export default function ConfirmOrder() {
 
   const createOrderPayload = () => {
     if (!user || !location) {
-      Alert.alert('Error', 'Please select your delivery location.');
+      Toast.show('Please select your delivery location.', Toast.LONG);
+
+      
       return null;
     }
     if (items.length === 0) {
-      Alert.alert('Error', 'Your cart is empty.');
+      Toast.show('Your cart is empty', Toast.SHORT);
+
+
       return null;
     }
     if (!isValidNepaliPhone(deliveryPhone)) {
-      Alert.alert('Invalid Phone', 'Please enter a valid Nepali delivery phone number.');
+       Toast.show('Invalid Phone', 'Please enter a valid Nepali delivery phone number.', Toast.SHORT);
+
+    
       return null;
     }
     if (paymentMethod === 'cash' && subtotal > 3000) {
-      Alert.alert('Restriction', 'Cannot place orders above NPR 3000 using COD.');
+
+      Toast.show('Restriction', 'Cannot place orders above NPR 3000 using COD.');
       return null;
     }
  if (paymentMethod === 'cash' && distance > 7) {
-      Alert.alert('Restriction', 'you cannot order above 7km.');
+      Toast.show('Restriction', 'you cannot order above 7km.');
       return null;
     }
     if (paymentMethod === 'QRPAY' && distance > 7) {
-      Alert.alert('Restriction', 'you cannot order above 7km.');
+      Toast.show('Restriction', 'you cannot order above 7km.');
       return null;
     }
     if (paymentMethod === 'QRPAY' && (!txnId.trim() || !note.trim())) {
@@ -203,7 +210,7 @@ export default function ConfirmOrder() {
     mutate(payload, {
       onSuccess: async () => {
         setLoading(false);
-        Alert.alert('Success', 'Order placed successfully!');
+        Toast.show('Success, Order placed successfully!')
         clearCart();
         await refetch();
 

@@ -1,6 +1,5 @@
-// hooks/useProductList.js
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../utils/api';
+import { requestWithFallback } from "../utils/api";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours
@@ -13,8 +12,17 @@ const fetchProducts = async (category) => {
       ? `/product?category=${encodeURIComponent(category)}`
       : '/product';
 
-  const response = await api.get(url);
-  return response.data.products;
+  // ✅ Correct usage: pass config object
+  const response = await requestWithFallback({
+    method: 'GET',
+    url,
+  });
+
+  // Debug log to inspect actual API response
+  console.log("API response for /product:", response?.data);
+
+  // ✅ Always return an array, never undefined
+  return response?.data?.products ?? [];
 };
 
 export function useProductList(category) {
@@ -27,27 +35,26 @@ export function useProductList(category) {
       if (session) {
         const { data, timestamp } = JSON.parse(session);
         if (Date.now() - timestamp < SESSION_DURATION) {
-          // Return cached data if still valid
-          return data;
+          return data ?? []; // ✅ ensure defined
         }
       }
 
       // Fetch fresh data
       const data = await fetchProducts(category);
 
-      // Store in AsyncStorage with timestamp
+      // Save to AsyncStorage with timestamp
       await AsyncStorage.setItem(
         sessionKey,
         JSON.stringify({ data, timestamp: Date.now() })
       );
 
-      return data;
+      return data ?? [];
     },
     staleTime: SESSION_DURATION,      // session freshness
     cacheTime: SESSION_DURATION,      // keep in memory for 2 hours
     refetchOnWindowFocus: false,      // prevent extra calls
     refetchOnReconnect: false,
     refetchOnMount: false,
-    retry: false,
+    retry: false,                     // no automatic retries
   });
 }

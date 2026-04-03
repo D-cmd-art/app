@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Formik } from "formik";
+import Toast from 'react-native-simple-toast';
 import * as Yup from "yup";
 import { useNavigation } from "@react-navigation/native";
 import validatePhoneNumber from "nepali-phone-number-validator";
@@ -68,12 +69,14 @@ export default function LoginScreen() {
 
           const user = jwtDecode(accessToken);
           setUser(user);
+  Toast.show(`Login Successful. Welcome ${user.name || "User"}!`, Toast.SHORT);
+
 
           resetForm();
           setLoading(false); // Hide modal
         },
         onError: (error) => {
-          Alert.alert("Login Failed", "Try again!");
+       Toast.show('Login Failed. Try again!', Toast.SHORT);
           setLoading(false);
         },
       }

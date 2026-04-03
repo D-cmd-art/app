@@ -1,68 +1,74 @@
-import { useMutation,useQuery } from '@tanstack/react-query';
-import {api} from "../utils/api";
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { requestWithFallback } from "../utils/api"; // ✅ use fallback-aware helper
 
+// -------------------- CREATE ORDER --------------------
 export function useOrder(options) {
   return useMutation({
     mutationFn: async (data) => {
-     
-      const res = await api.post('/orders/create', data); // ✅ corrected endpoint
-      return res.data;
+      const res = await requestWithFallback({
+        method: 'POST',
+        url: '/orders/create',
+        data,
+      });
+      return res?.data ?? {};
     },
     ...options,
   });
 }
 
-// use orderlist
-async function fetchOrderList(){
-  const res=await api.get("/orders");
-  return res.data.orders;
- }
- export function useOrderList() {
+// -------------------- FETCH ORDER LIST --------------------
+async function fetchOrderList() {
+  const res = await requestWithFallback({
+    method: 'GET',
+    url: '/orders',
+  });
+  console.log("API response for /orders:", res?.data);
+  return res?.data?.orders ?? [];
+}
+
+export function useOrderList() {
   return useQuery({
     queryKey: ['orders'],
-    queryFn: () => fetchOrderList(),
-  // ✅ cache data
-    staleTime: 1000 * 60 * 25, // 5 minutes
-
-    // ✅ keep in memory
-    cacheTime: 1000 * 60 * 25, // 30 minutes
-
-    // ✅ refetch only on real events
+    queryFn: fetchOrderList,
+    staleTime: 1000 * 60 * 5,   // 5 minutes
+    cacheTime: 1000 * 60 * 30,  // 30 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     refetchOnMount: false,
-
   });
 }
 
-//  change the status of order based on the substatus
+// -------------------- UPDATE ORDER SUBSTATUS --------------------
 export function useSubStatus(options) {
   return useMutation({
-    mutationFn: async ({ orderId, subStatus,products,userInfo,totalPayment,deliveryCharge }) => {
+    mutationFn: async ({ orderId, subStatus, products, userInfo, totalPayment, deliveryCharge }) => {
       if (!orderId) throw new Error("orderId is required");
       if (!subStatus) throw new Error("subStatus is required");
 
-      //  Use PATCH to update existing order
-      const res = await api.patch(`/orders/${orderId}`, { subStatus,products,userInfo,totalPayment,deliveryCharge });
-      return res.data;
+      const res = await requestWithFallback({
+        method: 'PATCH',
+        url: `/orders/${orderId}`,
+        data: { subStatus, products, userInfo, totalPayment, deliveryCharge },
+      });
+      return res?.data ?? {};
     },
     ...options,
   });
 }
-// use order based on user id 
 
-// hooks/admin/useOrder.js
-
-
-
+// -------------------- FETCH ORDERS BY USER --------------------
 export function useUserOrders(userId) {
   return useQuery({
     queryKey: ["userOrders", userId],
     queryFn: async () => {
-      if (!userId) return [];  // If no userId, return empty array
-      const res = await api.get(`/orders/user/${userId}`);
-      return res.data.orders;  // Return the orders directly
+      if (!userId) return [];
+      const res = await requestWithFallback({
+        method: 'GET',
+        url: `/orders/user/${userId}`,
+      });
+      console.log(`API response for /orders/user/${userId}:`, res?.data);
+      return res?.data?.orders ?? [];
     },
-    enabled: !!userId, // ✅ only fetch if userId exists
+    enabled: !!userId,
   });
 }
